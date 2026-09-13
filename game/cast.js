@@ -47,7 +47,7 @@
           for(let y=Math.round(y0+(y1-y0)*.53);y<=Math.round(y0+(y1-y0)*.66);y++)for(let x=x0;x<=x1;x++)if(d[((oy+y)*width+ox+x)*4+3]>100){left=Math.min(left,x);right=Math.max(right,x);}
           if(left<=right)anchor=(left+right)/2-x0;
         }
-        frames.push({image:frame,anchor});
+        frames.push({image:frame,anchor,cropX:x0,cropY:y0});
       }
       return {frames,height:frames[0].image.height,runHeight:Math.max(...frames.slice(0,9).map(f=>f.image.height))};
     }
@@ -59,13 +59,13 @@
       ctx.save();ctx.translate(Math.round(x),Math.round(feet));ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
       ctx.drawImage(frame.image,-frame.anchor,-frame.image.height);ctx.restore();
     }
-    motion(ctx,name,pose,x,feet,height,facing,gait=0,moving=false,alpha=1){
+    motion(ctx,name,pose,x,feet,height,facing,gait=0,moving=false,alpha=1,sinister=false){
       const stride=1+(Math.floor(gait*8)%8+8)%8;
       // Brief whole-body actions preserve arms and silhouette. Callers resume
       // the distance-based stride immediately after the release accent.
-      this.draw(ctx,name,pose===-1?stride:pose,x,feet,height,facing,0,alpha);
+      this.draw(ctx,name,pose===-1?stride:pose,x,feet,height,facing,0,alpha,sinister);
     }
-    draw(ctx,name,index,x,feet,height,facing=-1,bob=0,alpha=1){
+    draw(ctx,name,index,x,feet,height,facing=-1,bob=0,alpha=1,sinister=false){
       const actor=this.actors[name];if(!actor)return;
       const f=actor.frames[index];if(!f)return;
       // One reference scale for the complete character, with a cap on run height.
@@ -74,7 +74,22 @@
       const reference=base.runHeight;
       const scale=height/reference;
       ctx.save();ctx.translate(x,feet+bob);const native=name==='roman'?[-1,-1,-1,1,-1,-1,-1,1,-1,-1,1,1,-1,-1,-1,1][index]:name==='ravil'?[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,1,-1,-1,-1,1][index]:1;ctx.scale(facing/native*scale,scale);ctx.globalAlpha=alpha;ctx.imageSmoothingEnabled=true;
-      ctx.drawImage(f.image,-f.anchor,-f.image.height);ctx.restore();
+      if(sinister){ctx.shadowColor='#be54ff';ctx.shadowBlur=9;ctx.filter='saturate(.6)';}
+      ctx.drawImage(f.image,-f.anchor,-f.image.height);
+      if(sinister&&name==='roman'){
+        ctx.filter='none';ctx.shadowColor='#ff668d';ctx.shadowBlur=12;
+        // Atlas landmarks follow the actual glasses in every pose and both facings.
+        const eyes=[[108,111,137,108],[110,116,138,112],[111,118,140,114],[163,112,190,115],
+          [107,114,138,110],[110,118,140,114],[110,117,140,114],[161,108,190,110],
+          [109,103,139,99],[115,103,144,99],[120,104,150,98],[129,97,159,90],
+          [118,88,146,85],[109,143,140,135],[117,91,146,86],[160,151,186,146]][index];
+        for(let i=0;i<4;i+=2){const ex=eyes[i]-f.cropX-f.anchor,ey=eyes[i+1]-f.cropY-f.image.height;
+          ctx.fillStyle='#ff527c';ctx.beginPath();ctx.ellipse(ex,ey,7,4,-.12,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle='#fff2ba';ctx.fillRect(ex-2,ey-2,4,3);
+          ctx.shadowBlur=0;ctx.strokeStyle='#41132e';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(ex-7,ey-(i===0?8:3));ctx.lineTo(ex+7,ey-(i===0?3:8));ctx.stroke();ctx.shadowBlur=12;
+        }
+      }
+      ctx.restore();
     }
   }
   root.GurovCast=Cast;

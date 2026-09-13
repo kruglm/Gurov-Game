@@ -4,10 +4,12 @@
   const W = 1280, H = 720, PLAYER_W = 54, PLAYER_H = 123, PLAYER_ART_H = 146;
   const FINAL_LEVEL=3,CAMPAIGN=3;
   const UPGRADES=Object.freeze({paperHeal:2,paperDuration:1.2,paperCooldown:20,lowHealth:2,homingRange:760,homingSpeed:620,homingTurn:5.5});
-  const COMBAT=Object.freeze({hit:2,heavy:3,romanHP:3,erikHP:18,ivanHP:20,maxHostile:32,romanTell:.65,romanRushSpeed:365,romanRushTime:.42,romanRecovery:.85,ivanCycle:2.5,ivanWallTell:.9,ivanWallLife:5,ivanWallHP:2,ivanWallCool:8,ivanHealCharges:2,ivanHealDelay:1.4,ivanHealAmount:2});
+  const COMBAT=Object.freeze({hit:2,heavy:3,romanHP:3,erikHP:30,ivanHP:36,maxHostile:32,romanTell:.65,romanRushSpeed:365,romanRushTime:.42,romanRecovery:.85,ivanCycle:2.5,ivanWallTell:.9,ivanWallLife:5,ivanWallHP:2,ivanWallCool:8,ivanHealCharges:2,ivanHealDelay:1.4,ivanHealAmount:2,
+    summonCap:2,summonFirst:3,summonCool:11,summonTell:1.5,summonEmerge:.85,summonLife:26,darkRomanHP:4,darkRomanTell:.8});
   const FACULTY=typeof module!=='undefined'&&module.exports?require('./faculty-data.js'):root.GurovFacultyData;
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const enemyTarget=e=>e.hp>0&&e.phase!=='emerge'&&e.phase!=='dissolve';
   const lisp = text => text.replace(/[сш]/g,'ф').replace(/[СШ]/g,'Ф');
   const CHAPTERS = [
     {name:'По следам Павленко',subject:'ЛЕТНИЙ ДВОР ВМК',color:'#eccb83',
@@ -84,7 +86,7 @@
     const enemies=(erik?[620,1250]:[560,1690]).map((x,i)=>roman(x,i,x-65,x+90,(i%2?-1:1)*74));
     const boss={kind:erik?'erik':'ivan',name:erik?'Эрик Ильясов':'Иван Павленко',x:erik?2560:1280,y:500,w:66,h:110,
       hp:erik?COMBAT.erikHP:COMBAT.ivanHP,maxHp:erik?COMBAT.erikHP:COMBAT.ivanHP,timer:0,active:false,defeated:false,hit:0,phase:'idle',facing:-1,vx:0,gait:0,cycle:-1,volley:-1,stamp:-1,slam:-1,followVolley:-1,
-      academic:false,walls:[],wallCool:5,wallTell:null,healCharges:COMBAT.ivanHealCharges,healCool:9,healTime:0,speech:'',speechTime:0,warning:null,slamWarning:false,trapTargets:null,escape:0,escapeCool:0,exhausted:false,enraged:false,enrageAnnounced:false};
+      academic:false,summon:null,summonCool:COMBAT.summonFirst,summonTurn:0,walls:[],wallCool:5,wallTell:null,healCharges:COMBAT.ivanHealCharges,healCool:9,healTime:0,speech:'',speechTime:0,warning:null,slamWarning:false,trapTargets:null,escape:0,escapeCool:0,exhausted:false,enraged:false,enrageAnnounced:false};
     const checkpoints=[{x:120,y:610,active:true},{x:erik?1840:2250,y:610,active:false}];
     const npc=erik?{kind:'sasha',name:'Саша Ситников',x:1740,y:610,helped:false,greeted:false,handoff:0,anchor:1740,gait:0,vx:0}:null;
     const signs=[{x:240,y:610,heading:erik?'ПОВЕСТКА ЗАСЕДАНИЯ':'ОТ РЕЦЕНЗИИ НЕ УБЕЖАТЬ',text:CHAPTERS[index].note}];
@@ -170,6 +172,7 @@
     }
     spawn() {
       const cp=this.level.checkpoints[this.checkpoint];
+      this.level.enemies=this.level.enemies.filter(e=>!e.summoned);
       if(this.index===FINAL_LEVEL&&this.level.boss&&!this.level.boss.active&&!this.level.boss.defeated)this.level.boss.x=Math.max(this.level.boss.x,cp.x+480);
       this.player={x:cp.x,y:cp.y-PLAYER_H,w:PLAYER_W,h:PLAYER_H,vx:0,vy:0,facing:1,grounded:false,jumps:0,coyote:0,jumpBuffer:0,hp:5,inv:1.2,shoot:0,cast:0,dash:0,dashCool:0,gait:0,landing:0,eating:0,healFlash:0};
       this.camera=clamp(this.player.x-W*.3,0,this.level.width-W);
@@ -209,15 +212,17 @@
       this.projectiles.push({type,owner,x,y,vx,vy,w,h,age:0,life:4,enemy:true,damage:COMBAT.hit,...extra});return true;
     }
     updateRoman(e,dt){
+      if(!enemyTarget(e))return;
       const p=this.player,dx=p.x+p.w/2-e.x-e.w/2;
       e.attackCool=Math.max(0,e.attackCool-dt);
       if(e.phase==='rushWindup'||e.phase==='burstWindup'){
         e.vx=0;e.actionTime-=dt;if(e.actionTime>0)return;
-        if(e.phase==='rushWindup'){e.phase='rush';e.actionTime=COMBAT.romanRushTime;e.vx=e.facing*COMBAT.romanRushSpeed;this.emit('enemyRush',{x:e.x,y:e.y});}
+        if(e.phase==='rushWindup'){e.phase='rush';e.actionTime=COMBAT.romanRushTime;e.vx=e.facing*(e.summoned?420:COMBAT.romanRushSpeed);this.emit('enemyRush',{x:e.x,y:e.y});}
         else{
           e.phase='burst';e.actionTime=.22;
           const x=e.x+e.w/2+e.facing*28,y=e.y+24,angle=Math.atan2(e.aim.y-y,e.aim.x-x);
-          [-.14,0,.14].forEach(a=>this.enemyShot('roman','mcp',x-14,y-12,Math.cos(angle+a)*330,Math.sin(angle+a)*330));this.emit('mcpShot');
+          const speed=e.summoned?360:330;
+          [-.14,0,.14].forEach(a=>this.enemyShot('roman','mcp',x-14,y-12,Math.cos(angle+a)*speed,Math.sin(angle+a)*speed,28,24,{sinister:!!e.summoned}));this.emit('mcpShot');
         }
         return;
       }
@@ -227,13 +232,14 @@
         if(e.actionTime<=0||(e.phase==='rush'&&e.x===old)){e.phase='recover';e.vx=0;e.actionTime=COMBAT.romanRecovery;}
         return;
       }
-      if(e.phase==='recover'){e.vx=0;e.actionTime-=dt;if(e.actionTime<=0){e.phase='patrol';e.attackCool=2.2+e.seed*.25;e.vx=e.facing*e.patrolSpeed;}return;}
+      if(e.phase==='recover'){e.vx=0;e.actionTime-=dt;if(e.actionTime<=0){e.phase='patrol';e.attackCool=e.summoned?1.9:2.2+e.seed*.25;e.vx=e.facing*e.patrolSpeed;}return;}
+      if(e.summoned&&Math.abs(dx)>90){e.facing=Math.sign(dx);e.vx=e.facing*e.patrolSpeed;}
       const visible=e.x-this.camera>35&&e.x-this.camera<W-60;
       if(e.attackCool<=0&&visible&&Math.abs(dx)<530&&Math.abs(p.y+60-e.y)<210){
         e.facing=dx<0?-1:1;
         const space=e.facing>0?e.max-e.x:e.x-e.min;
         e.phase=Math.abs(dx)<170&&Math.abs(p.y+p.h-610)<75&&space>45&&e.attackTurn++%2===0?'rushWindup':'burstWindup';
-        e.aim={x:p.x+p.w/2,y:p.y+p.h*.45};e.actionTime=COMBAT.romanTell;e.vx=0;e.speechTime=0;
+        e.aim={x:p.x+p.w/2,y:p.y+p.h*.45};e.actionTime=e.summoned?COMBAT.darkRomanTell:COMBAT.romanTell;e.vx=0;e.speechTime=0;
         this.emit('combatTell',{owner:'roman'});return;
       }
       if(e.wait<=0){e.x+=e.vx*dt;e.gait+=Math.abs(e.vx)*dt/100;}
@@ -244,7 +250,7 @@
       if(this.intro){this.intro.time+=Math.min(dt,1/30);if(input.skipIntro&&this.intro.time>.6)this.intro.time=this.intro.duration;if(this.intro.time>=this.intro.duration){this.intro=null;this.emit('bossStart',{name:this.level.boss.name});}return;}
       dt=clamp(dt,0,1/30); this.time+=dt;this.stats.elapsed+=dt;
       const p=this.player,L=this.level;
-      if(L.endless)this.updateRoof();
+      if(L.endless){this.updateRoof();this.updateSummons(dt);}
       ['inv','shoot','cast','dashCool','coyote','jumpBuffer','landing','healFlash'].forEach(k=>p[k]=Math.max(0,p[k]-dt));
       this.paperCooldown=Math.max(0,this.paperCooldown-dt);
       if(input.jump||input.dash)this.cancelEating();
@@ -299,12 +305,12 @@
       if(p.y>H+160){this.die('fall');return;}
       for(const e of L.enemies){
         e.speechTime=Math.max(0,(e.speechTime||0)-dt);e.emote=Math.max(0,(e.emote||0)-dt);
-        if(e.hp<=0)continue;e.hit=Math.max(0,e.hit-dt);e.wait=Math.max(0,e.wait-dt);
-        if(this.romanSpeechCool<=0&&Math.abs(e.x-p.x)<420&&e.phase==='patrol'){e.speech=ROMAN_LINES[e.lineIndex++%ROMAN_LINES.length];e.speechTime=3.2;e.emote=1.6;this.romanSpeechCool=6.5;this.emit('romanSpeech',{speech:e.speech});}
+        if(!enemyTarget(e))continue;e.hit=Math.max(0,e.hit-dt);e.wait=Math.max(0,e.wait-dt);
+        if(!e.summoned&&this.romanSpeechCool<=0&&Math.abs(e.x-p.x)<420&&e.phase==='patrol'){e.speech=ROMAN_LINES[e.lineIndex++%ROMAN_LINES.length];e.speechTime=3.2;e.emote=1.6;this.romanSpeechCool=6.5;this.emit('romanSpeech',{speech:e.speech});}
         this.updateRoman(e,dt);
         if(overlap(p,e)){
           if(p.vy>80&&oldBottom<e.y+22){e.hp=Math.max(0,e.hp-2);e.hit=.18;e.phase='recover';e.vx=0;e.actionTime=COMBAT.romanRecovery;p.vy=-470;this.emit('hit',{x:e.x+20,y:e.y+20});if(!e.hp){this.stats.defeats++;this.emit('enemy',{x:e.x+20,y:e.y+20,owner:e.kind});}}
-          else this.damage(e.phase==='rush'?COMBAT.heavy:COMBAT.hit,e.x,e.kind);
+          else{this.damage(e.phase==='rush'?COMBAT.heavy:COMBAT.hit,e.x,e.kind);if(p!==this.player)return;}
         }
       }
       if(p!==this.player)return;
@@ -346,11 +352,11 @@
           for(const wall of b?.walls||[])if(wall.hp>0&&shot.life>0&&overlap(shot,wall)){wall.hp--;shot.life=0;this.emit('earthBreak',{x:wall.x+wall.w/2,y:wall.y+30});}
           for(const trap of this.projectiles)if(trap.type==='tomatoTrap'&&trap.life>0&&overlap(shot,trap)){trap.life=0;shot.life=0;this.emit('tomatoSplat',{x:trap.x+17,y:trap.y+14});break;}
           if(shot.life<=0)continue;
-          for(const e of L.enemies)if(e.hp>0&&overlap(shot,e)){e.hp--;e.hit=.13;shot.life=0;this.emit('hit',{x:e.x+20,y:e.y+20});if(e.hp===0){this.stats.defeats++;this.emit('enemy',{x:e.x+20,y:e.y+20,owner:e.kind});}break;}
+          for(const e of L.enemies)if(enemyTarget(e)&&overlap(shot,e)){e.hp--;e.hit=.13;shot.life=0;this.emit('hit',{x:e.x+20,y:e.y+20});if(e.hp===0){this.stats.defeats++;this.emit('enemy',{x:e.x+20,y:e.y+20,owner:e.kind});}break;}
           if(shot.life>0&&b&&b.active&&!b.defeated&&!b.exhausted&&overlap(shot,b)){
             shot.life=0;
             if(this.bossOpen()){b.hp--;b.hit=.18;if(b.kind==='ivan'){b.healTime=0;b.healCool=Math.max(b.healCool,3);if(!b.academic&&b.hp<=b.maxHp/2){this.beginAcademicPhase();break;}}this.emit('hit',{x:b.x+55,y:b.y+60});if(b.hp<=0){b.hp=0;b.walls=[];b.wallTell=null;b.warning=null;b.slamWarning=false;b.trapTargets=null;b.escape=0;b.vx=0;b.y=500;b.speechTime=8;this.projectiles.forEach(s=>{if(s.enemy)s.life=0;});
-              if(b.kind==='ivan'){b.exhausted=true;b.phase='exhausted';b.speech='Всё, запыхался... Только один вопрос!';this.emit('ivanExhausted');}
+              if(b.kind==='ivan'){b.exhausted=true;b.phase='exhausted';b.speech='Всё, запыхался... Только один вопрос!';this.dismissSummons();this.emit('ivanExhausted');}
               else{b.defeated=true;b.speech='Прости, Гурочка...';this.pendingScene='erik-rescue';this.pendingBossOutro='erik';this.emit('bossDefeated');this.unlockCompanion();}this.emit('save');}}
             else this.emit('shield',{x:shot.x,y:shot.y});
           }
@@ -368,7 +374,7 @@
       const target=clamp(p.x-W*.34+p.vx*.22,0,L.width-W);this.camera+=(target-this.camera)*Math.min(1,dt*5);
     }
     guideJaw(shot,dt){
-      const x=shot.x+shot.w/2,y=shot.y+shot.h/2,targets=this.level.enemies.filter(e=>e.hp>0),boss=this.level.boss;
+      const x=shot.x+shot.w/2,y=shot.y+shot.h/2,targets=this.level.enemies.filter(enemyTarget),boss=this.level.boss;
       if(boss?.active&&!boss.defeated&&!boss.exhausted)targets.push(boss);
       let target=null,distance=UPGRADES.homingRange;
       for(const e of targets){const d=Math.hypot(e.x+e.w/2-x,e.y+e.h*.45-y);if(d<distance){distance=d;target=e;}}
@@ -427,7 +433,7 @@
       const bottom=c.y+c.h;c.vy=Math.min(900,c.vy+1850*dt);c.x=clamp(c.x+c.vx*dt,0,this.level.width-c.w);c.y+=c.vy*dt;c.grounded=false;
       if(c.vy>=0)for(const q of this.level.platforms)if(c.x+c.w>q.x&&c.x<q.x+q.w&&bottom<=q.y+7&&c.y+c.h>=q.y){c.y=q.y-c.h;c.vy=0;c.grounded=true;break;}
       if(c.grounded)c.gait+=Math.abs(c.vx)*dt/112;
-      const targets=this.level.enemies.filter(e=>e.hp>0);const b=this.level.boss;if(b?.active&&!b.defeated&&!b.exhausted)targets.push(b);
+      const targets=this.level.enemies.filter(enemyTarget);const b=this.level.boss;if(b?.active&&!b.defeated&&!b.exhausted)targets.push(b);
       const enemy=targets.filter(e=>Math.abs(e.x-c.x)<550&&Math.abs(e.y-c.y)<220).sort((a,b)=>Math.abs(a.x-c.x)-Math.abs(b.x-c.x))[0];
       if(enemy&&c.cool<=0){c.cool=1.3;c.cast=.32;c.facing=enemy.x<c.x?-1:1;const x=c.x+c.w/2,y=c.y+38,angle=Math.atan2(enemy.y+enemy.h*.45-y,enemy.x+enemy.w/2-x);
         this.projectiles.push({type:'lemma',owner:'ravil',x,y,w:18,h:18,vx:Math.cos(angle)*480,vy:Math.sin(angle)*480,life:1.4,enemy:false});this.emit('companionShot',{x,y});
@@ -470,7 +476,7 @@
       const p=this.player,L=this.level,b=L.boss;if(!L.endless)return;
       // Rebase the local coordinates to keep a long session numerically stable.
       // Keep an exhausted boss reachable when the player deliberately runs past him.
-      if(p.x>12288&&b.x>=8192){const shift=8192;p.x-=shift;b.x-=shift;this.camera-=shift;this.distanceOffset+=shift;if(b.trapTargets)b.trapTargets=b.trapTargets.map(x=>x-shift);for(const wall of b.walls||[])wall.x-=shift;if(b.wallTell)b.wallTell.x-=shift;for(const s of this.projectiles)s.x-=shift;if(this.companion)this.companion.x-=shift;this.roofChunk=null;}
+      if(p.x>12288&&b.x>=8192){const shift=8192;p.x-=shift;b.x-=shift;this.camera-=shift;this.distanceOffset+=shift;if(b.trapTargets)b.trapTargets=b.trapTargets.map(x=>x-shift);for(const wall of b.walls||[])wall.x-=shift;if(b.wallTell)b.wallTell.x-=shift;if(b.summon)b.summon.x-=shift;for(const e of L.enemies){e.x-=shift;e.min-=shift;e.max-=shift;if(e.aim)e.aim.x-=shift;}for(const s of this.projectiles)s.x-=shift;if(this.companion)this.companion.x-=shift;this.roofChunk=null;}
       L.width=Math.max(4096,p.x+W*3,b.x+W*2);
       const chunk=Math.floor(p.x/1024),last=Math.floor(Math.max(p.x,b.x)/1024)+3,key=chunk+':'+last;
       if(this.roofChunk===key)return;this.roofChunk=key;L.platforms=[];
@@ -478,6 +484,66 @@
         const x=i*1024;L.platforms.push({x,y:610,w:1024,h:160,kind:'floor'});
         L.platforms.push({x:x+360,y:490+(i%2)*35,w:180,h:24,kind:'ledge'});
       }
+    }
+    summonSpot(){
+      const p=this.player,b=this.level.boss,L=this.level;
+      // A fixed, visible floor mark; never relocate it underneath a moving player.
+      for(const offset of [370,490,250,-260,-380,580]){
+        const x=p.x+p.w/2+offset;
+        if(x<this.camera+85||x>this.camera+W-85||Math.abs(x-b.x-b.w/2)<100)continue;
+        if(!L.platforms.some(q=>q.kind==='floor'&&q.y===610&&x-40>=q.x&&x+40<=q.x+q.w))continue;
+        if(L.platforms.some(q=>q.kind!=='floor'&&q.y>440&&q.x<x+60&&q.x+q.w>x-60))continue;
+        if(b.walls.some(q=>q.x<x+90&&q.x+q.w>x-90))continue;
+        if(L.enemies.some(e=>e.summoned&&e.phase!=='dissolve'&&Math.abs(e.x+e.w/2-x)<170))continue;
+        return x;
+      }
+      return null;
+    }
+    dismissSummons(){
+      const b=this.level.boss;if(b)b.summon=null;
+      for(const e of this.level.enemies)if(e.summoned&&e.phase!=='dissolve'){
+        e.phase='dissolve';e.fade=.85;e.hp=0;e.vx=0;e.speechTime=0;this.emit('summonFade',{x:e.x+e.w/2,y:610});
+      }
+      for(const s of this.projectiles)if(s.sinister)s.life=0;
+    }
+    updateSummons(dt){
+      const b=this.level.boss;
+      if(!b?.academic||b.exhausted||b.defeated)this.dismissSummons();
+      for(const e of this.level.enemies)if(e.summoned){
+        e.lifetime-=dt;
+        e.portalClose=Math.max(0,(e.portalClose||0)-dt);
+        if(e.phase!=='dissolve'&&(e.hp<=0||e.lifetime<=0||Math.abs(e.x-this.player.x)>1150)){
+          e.phase='dissolve';e.fade=.85;e.hp=0;e.vx=0;e.speechTime=0;this.emit('summonFade',{x:e.x+e.w/2,y:610});
+        }
+        if(e.phase==='dissolve')e.fade-=dt;
+        else if(e.phase==='emerge'){
+          e.emerge=Math.max(0,e.emerge-dt);
+          if(e.emerge<=0){e.phase='recover';e.actionTime=.65;e.attackCool=1.3;e.portalClose=.3;this.emit('summonReady',{x:e.x+e.w/2,y:610});}
+        }
+      }
+      this.level.enemies=this.level.enemies.filter(e=>!e.summoned||e.phase!=='dissolve'||e.fade>0);
+    }
+    updateSummoning(dt){
+      const b=this.level.boss,p=this.player;
+      b.summonCool=Math.max(0,b.summonCool-dt);
+      if(b.summon){
+        b.vx=0;b.phase='summon';b.summon.time+=dt;
+        if(b.summon.time<COMBAT.summonTell)return true;
+        const x=b.summon.x;b.summon=null;b.summonCool=COMBAT.summonCool;
+        const crowded=this.level.enemies.filter(e=>e.summoned&&e.phase!=='dissolve').length>=COMBAT.summonCap;
+        if(!crowded&&Math.abs(p.x+p.w/2-x)>105&&!b.walls.some(q=>q.x<x+70&&q.x+q.w>x-70)){
+          const turn=b.summonTurn++,e=roman(x-25,turn%4,Math.max(0,x-450),x+450,116,turn%ROMAN_LINES.length);
+          Object.assign(e,{summoned:true,hp:COMBAT.darkRomanHP,maxHp:COMBAT.darkRomanHP,phase:'emerge',emerge:COMBAT.summonEmerge,lifetime:COMBAT.summonLife,vx:0,facing:p.x<x?-1:1});
+          this.level.enemies.push(e);this.emit('summonOpen',{x,y:610});
+        }else this.emit('summonFade',{x,y:610});
+        // Restart at a complete tell, never resume in the middle of a tomato throw.
+        b.timer=Math.ceil(b.timer/2.35)*2.35;b.trapTargets=null;return true;
+      }
+      if(b.summonCool>0||b.wallTell||b.healTime>0||b.escape>0||!['run','idle','recover'].includes(b.phase))return false;
+      if(this.level.enemies.filter(e=>e.summoned&&e.phase!=='dissolve').length>=COMBAT.summonCap)return false;
+      const x=this.summonSpot();if(x===null){b.summonCool=1;return false;}
+      b.summon={x,time:0};b.phase='summon';b.vx=0;b.trapTargets=null;b.wallCool=Math.max(b.wallCool,3.5);
+      this.emit('summonTell',{x,y:610});return true;
     }
     talkToFaculty(){
       if(!this.nearFaculty)return false;
@@ -569,6 +635,7 @@
     }
     beginAcademicPhase(){
       const b=this.level.boss;b.academic=true;b.enraged=true;b.enrageAnnounced=true;b.hp=b.maxHp;b.timer=0;b.cycle=-1;b.volley=-1;b.followVolley=-1;b.escape=0;b.escapeCool=3;b.trapTargets=null;b.vx=0;b.y=500;b.phase='transform';b.healCool=9;b.wallCool=4;
+      b.summon=null;b.summonCool=COMBAT.summonFirst;b.summonTurn=0;
       this.projectiles=[];this.player.inv=Math.max(this.player.inv,1.5);
       b.speech='Я ухожу в академический отпуск!';b.speechTime=4;
       this.intro={kind:'ivan',academic:true,name:'Иван Павленко в академическом отпуске',time:0,duration:3.8};
@@ -578,6 +645,7 @@
       const b=this.level.boss,p=this.player;if(!b.academic)return false;
       b.walls=b.walls.filter(w=>{w.life-=dt;return w.life>0&&w.hp>0;});
       b.wallCool=Math.max(0,b.wallCool-dt);b.healCool=Math.max(0,b.healCool-dt);
+      if(this.updateSummoning(dt))return true;
       if(b.wallTell){
         b.vx=0;b.phase='earthWindup';b.wallTell.time-=dt;
         if(b.wallTell.time<=0){const x=b.wallTell.x;b.wallTell=null;

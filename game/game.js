@@ -444,6 +444,9 @@
     if(e.type==='bossStart'){sound.resumeSpeech();toast(e.name==='Эрик Ильясов'?'Эрик Ильясов · атакуйте после согласования!':'Иван Павленко · догоняйте и уворачивайтесь от помидоров!',4);}
     if(e.type==='academicPhase'){sound.bossEntrance('ivan');ambientSpeech.defer(world,'ivan',world.level.boss,e.speech);toast('ФАЗА II · стенки разбиваются двумя попаданиями. Лечение прерывается атакой.',7);}
     if(e.type==='earthRise'||e.type==='earthBreak'){burst(e.x,e.y,'#c99f77',18);sound.sfx('land');}
+    if(e.type==='summonTell'&&world.level.boss.summonTurn===0)toast('Иван призывает Романов! Фиолетовый круг предупреждает о появлении.',4);
+    if(e.type==='summonOpen'||e.type==='summonReady')burst(e.x,e.y-12,'#d49aff',18);
+    if(e.type==='summonFade')burst(e.x,e.y-45,'#b17ade',12);
     if(e.type==='ivanHeal'){burst(e.x,e.y,'#a3edb0',12);toast('Иван восстановил 2 здоровья. Не давайте ему оторваться!',3);}
     if(e.type==='bossSpeech')ambientSpeech.say(world,world.level.boss.kind,world.level.boss,e.speech,2);
     if(e.type==='romanSpeech')ambientSpeech.say(world,'roman',world.level.enemies.find(n=>n.speech===e.speech&&n.speechTime>0),e.speech);
@@ -474,7 +477,7 @@
     if(hudCache.near!==near){$('sign-prompt').classList.toggle('hidden',!near);$('sign-prompt').innerHTML=near==='catch'?'<kbd>E</kbd> Поймать Ивана':near==='sasha'?'<kbd>E</kbd> Саша · принять курсовую':near==='course-team'?'<kbd>E</kbd> Обсудить прак, DL и байесы':near==='maisuradze'?'<kbd>E</kbd> Поговорить с Майсурадзе':near==='sasha-thanks'?'<kbd>E</kbd> Поговорить с Сашей':'<kbd>E</kbd> Прочитать заметку';hudCache.near=near;}
     const bossVisible=!!b?.active&&!b.defeated&&!world.intro;
     if(hudCache.bossVisible!==bossVisible){$('boss-hud').classList.toggle('hidden',!bossVisible);$('toast').style.top=bossVisible?'153px':'119px';hudCache.bossVisible=bossVisible;}
-    if(b?.active){const hp=b.hp/b.maxHp*100;if(hudCache.bossHP!==hp){$('boss-bar').style.width=hp+'%';hudCache.bossHP=hp;}set('boss-name',b.name.toUpperCase());let hint=b.kind==='ivan'?(b.phase==='heal'?'ЛЕЧИТСЯ · ПОПАДАНИЕ ПРЕРВЁТ':b.phase==='earthWindup'?'ЗЕМЛЯНАЯ СТЕНА · ПРЫЖОК ИЛИ 2 ПОПАДАНИЯ':b.exhausted?'ВЫДОХСЯ · ПОДОЙДИТЕ И НАЖМИТЕ E':b.phase==='trapWindup'?'ПОМИДОРЫ-ЛОВУШКИ · ПРЫЖОК ИЛИ ЧЕЛЮСТЬ':b.phase==='windup'?(b.enraged?'ДВОЙНОЙ БРОСОК · УВОРАЧИВАЙТЕСЬ':'ЗАМАХ · УВОРАЧИВАЙТЕСЬ'):'ДОГОНЯЙТЕ · J — ЧЕЛЮСТЬ'):b.slamWarning?'УДАР ПО ЗЕМЛЕ · ПРЫГАЙТЕ':world.bossOpen()?'АТАКУЙТЕ · J':'СОГЛАСОВЫВАЕТ · ЩИТ';set('boss-state',(b.enraged&&!b.exhausted?'ФАЗА II · ':'')+hint);}
+    if(b?.active){const hp=b.hp/b.maxHp*100;if(hudCache.bossHP!==hp){$('boss-bar').style.width=hp+'%';hudCache.bossHP=hp;}set('boss-name',b.name.toUpperCase());let hint=b.kind==='ivan'?(b.phase==='summon'?'ПРИЗЫВ РОМАНА · ОТОЙДИТЕ ОТ КРУГА':b.phase==='heal'?'ЛЕЧИТСЯ · ПОПАДАНИЕ ПРЕРВЁТ':b.phase==='earthWindup'?'ЗЕМЛЯНАЯ СТЕНА · ПРЫЖОК ИЛИ 2 ПОПАДАНИЯ':b.exhausted?'ВЫДОХСЯ · ПОДОЙДИТЕ И НАЖМИТЕ E':b.phase==='trapWindup'?'ПОМИДОРЫ-ЛОВУШКИ · ПРЫЖОК ИЛИ ЧЕЛЮСТЬ':b.phase==='windup'?(b.enraged?'ДВОЙНОЙ БРОСОК · УВОРАЧИВАЙТЕСЬ':'ЗАМАХ · УВОРАЧИВАЙТЕСЬ'):'ДОГОНЯЙТЕ · J — ЧЕЛЮСТЬ'):b.slamWarning?'УДАР ПО ЗЕМЛЕ · ПРЫГАЙТЕ':world.bossOpen()?'АТАКУЙТЕ · J':'СОГЛАСОВЫВАЕТ · ЩИТ';set('boss-state',(b.enraged&&!b.exhausted?'ФАЗА II · ':'')+hint);}
   }
   // Source atlases may have a baked preview checkerboard. Treat the neutral
   // connected border as a render-time color key, leaving the source untouched.
@@ -710,12 +713,20 @@
       const rush=e.phase==='rushWindup',color=rush?'#ffa78b':'#a6e5e3';
       text(rush?'РЫВОК · 3 ♥':'MCP-ЗАЛП · 2 ♥',x,e.y-50,color,11,'monospace','center');
       ctx.setLineDash([6,7]);
-      if(rush){const end=clamp(e.x+e.facing*155,e.min,e.max)+e.w/2-world.camera;line(x,604,end,604,color,4);text(e.facing>0?'›':'‹',end,604,color,30,'monospace','center');}
+      if(rush){const end=clamp(e.x+e.facing*(e.summoned?176.4:155),e.min,e.max)+e.w/2-world.camera;line(x,604,end,604,color,4);text(e.facing>0?'›':'‹',end,604,color,30,'monospace','center');}
       else if(e.aim)line(x,e.y+24,e.aim.x-world.camera,e.aim.y,color+'88',2);
       ctx.setLineDash([]);
     }
-    cast.motion(ctx,'roman',pose,x,e.y+e.h,134,e.facing||1,e.gait,moving,e.hit>0?.65:1);
-    if(e.hp>0&&!windup){for(let i=0;i<e.maxHp;i++)rect(x-13+i*10,e.y-43,7,3,i<e.hp?'#dccb94':'#4b5960');}
+    if(e.summoned){
+      const s=GurovSummonEffects.state(e),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,feet=e.y+e.h;
+      GurovSummonEffects.before(ctx,e,x,feet,world.time,reduced);
+      ctx.save();ctx.beginPath();ctx.rect(x-120,feet-230,240,230);ctx.clip();
+      const rise=s.emerging?Math.pow(1-s.progress,2)*142:0,lift=s.dissolving?(1-s.alpha)*32:0;
+      cast.motion(ctx,'roman',s.emerging?12:s.dissolving?11:pose,x,feet+rise-lift,134,e.facing||1,e.gait,moving,(e.hit>0?.65:1)*s.alpha*(s.emerging?.35+s.progress*.65:1),true);
+      ctx.restore();GurovSummonEffects.after(ctx,e,x,feet,world.time,reduced);
+      if(!s.emerging&&!s.dissolving&&!windup)text('ТЁМНЫЙ РОМАН',x,e.y-56,'#dcadff',10,'monospace','center');
+    }else cast.motion(ctx,'roman',pose,x,e.y+e.h,134,e.facing||1,e.gait,moving,e.hit>0?.65:1);
+    if(e.hp>0&&!windup&&e.phase!=='emerge'){for(let i=0;i<e.maxHp;i++)rect(x-(e.maxHp*10-3)/2+i*10,e.y-43,7,3,i<e.hp?(e.summoned?'#d49bff':'#dccb94'):'#4b5960');}
     if(e.speechTime>0&&e.hp>0&&e.phase==='patrol')bubble(e.speech,x,e.y-51,'#dbdfac');
   }
   function drawCompanion(){
@@ -769,7 +780,7 @@
     else if(b.exhausted)pose=13;
     else if(b.hit>0)pose=11;
     else if(erik)pose=b.phase==='talk'?14:b.phase==='slamWindup'?12:b.phase==='recover'?13:['stamp','windup'].includes(b.phase)?9:b.phase==='throw'?10:Math.abs(b.vx)>1?-1:0;
-    else pose=b.phase==='earthWindup'?13:b.phase==='heal'?15:b.escape>0?12:b.phase==='trapWindup'?13:b.phase==='trapThrow'?10:b.phase==='windup'?9:b.phase==='throw'?10:Math.abs(b.vx)>0?-1:14;
+    else pose=b.phase==='summon'?9:b.phase==='earthWindup'?13:b.phase==='heal'?15:b.escape>0?12:b.phase==='trapWindup'?13:b.phase==='trapThrow'?10:b.phase==='windup'?9:b.phase==='throw'?10:Math.abs(b.vx)>0?-1:14;
     ctx.fillStyle='#09192377';ctx.beginPath();ctx.ellipse(x,613,40,7,0,0,Math.PI*2);ctx.fill();
     const facing=!erik&&(pose===9||pose===10)?(world.player.x<b.x?-1:1):b.facing;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -799,12 +810,12 @@
   }
   function gameScene(hidePlayer=false){
     environment();ctx.save();if(shake>0)ctx.translate((random(clock)-.5)*shake*22,(random(clock+4)-.5)*shake*15);
-    props();platforms();drawRunner();drawCameo();drawCaptive();drawCompanion();drawItems();world.level.enemies.forEach(drawEnemy);drawBoss();
+    props();platforms();GurovSummonEffects.warning(ctx,world.level.boss,world.camera,world.time,matchMedia('(prefers-reduced-motion: reduce)').matches);drawRunner();drawCameo();drawCaptive();drawCompanion();drawItems();world.level.enemies.forEach(drawEnemy);drawBoss();
     for(const s of world.projectiles){
       const x=s.x+s.w/2-world.camera,y=s.y+s.h/2;if(x<-100||x>W+100)continue;
       if(s.type==='hold'||s.type==='bigHold')GurovItems.draw(ctx,'hold',x,y,s.w+12,s.h+12,s.age*(s.vx<0?-3:3),s.variant);
       else if(s.type==='tomato')GurovItems.draw(ctx,'tomato',x,y,34,34,s.age*(s.vx<0?-5:5));
-      else if(s.type==='mcp')GurovItems.draw(ctx,'mcp',x,y,37,31,Math.sin(s.age*10)*.14);
+      else if(s.type==='mcp'){if(s.sinister){glow(x,y,28,'#c56dff55');ctx.save();ctx.filter='hue-rotate(85deg)';}GurovItems.draw(ctx,'mcp',x,y,37,31,Math.sin(s.age*10)*.14);if(s.sinister)ctx.restore();}
       else if(s.type==='shockwave')GurovItems.draw(ctx,'shockwave',x,y,82,38,0);
       else if(s.type==='tomatoTrap'){ctx.strokeStyle=s.arm>0?'#eed893':'#f07f65';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,606,25,6,0,0,Math.PI*2);ctx.stroke();GurovItems.draw(ctx,'tomato',x,y,37,37,Math.sin(s.age*5)*.06);}
       else if(s.type==='lemma'){glow(x,y,25,'#7cfce933');GurovItems.draw(ctx,'lemma',x,y,27,27,Math.sin(s.age*8)*.15);}

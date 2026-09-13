@@ -4,7 +4,7 @@
  function state(b,reduced=false){
   const active=!!b&&b.kind==='ivan'&&b.active&&b.academic&&!b.exhausted&&!b.defeated;
   return {active,embers:active&&!reduced?16:0,trail:active&&!reduced&&Math.abs(b.vx)>260?3:0,
-   charge:active&&['windup','trapWindup','earthWindup','transform'].includes(b.phase),
+   charge:active&&['windup','trapWindup','earthWindup','transform','summon'].includes(b.phase),
    earth:active&&b.phase==='earthWindup',heal:active&&b.phase==='heal',reduced};
  }
  function before(c,b,x,feet,cast,pose,facing,time,reduced=false){

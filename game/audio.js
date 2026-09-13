@@ -161,6 +161,15 @@
       const tone=(n,d,v=.1,to=null,delay=0,type='sine')=>this.tone(n,d,type,v,delay,'sfx',to);
       if(name==='coursework'){[69,74,78,81].forEach((n,i)=>tone(n,.3,.09,null,i*.08));}
       else if(name==='ivanCaught'){[74,77,81,86].forEach((n,i)=>tone(n,.5,.1,null,i*.1));}
+      else if(name==='summonTell'){
+        // A rising magical seam announces the floor mark, on the SFX bus only.
+        tone(45,.72,.075,69,0,'triangle');tone(63,.55,.045,70,.12);tone(78,.22,.04,82,.5);
+      }
+      else if(name==='summonOpen'){
+        this.defeatNoise(.2,.09,1700);tone(38,.38,.11,26);[65,68,74].forEach((n,i)=>tone(n,.24,.045,null,.04+i*.05,'triangle'));
+      }
+      else if(name==='summonReady'){tone(82,.09,.04,70);}
+      else if(name==='summonFade'){tone(66,.24,.045,41,0,'triangle');}
       else if(name==='mcpShot'){
         // Short paper/card flick, air and a digital acknowledgement.
         this.defeatNoise(.11,.10,4300);tone(61,.10,.08,78,0,'triangle');tone(91,.045,.045,84,.07,'square');this.effort('throw');

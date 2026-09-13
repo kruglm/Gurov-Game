@@ -3,12 +3,12 @@
  const fields=['x','y','vx','vy','gait'];
  const point=p=>p?Object.fromEntries(fields.map(k=>[k,p[k]])):null;
  root.GurovRender={
-  capture(w){return {playerRef:w.player,index:w.index,time:w.time,camera:w.camera,player:point(w.player),runner:point(w.runner),companion:point(w.companion),npc:point(w.level.npc),boss:point(w.level.boss),enemies:w.level.enemies.map(point),shots:new Map(w.projectiles.map(s=>[s,point(s)]))};},
+  capture(w){return {playerRef:w.player,index:w.index,time:w.time,camera:w.camera,player:point(w.player),runner:point(w.runner),companion:point(w.companion),npc:point(w.level.npc),boss:point(w.level.boss),enemies:new Map(w.level.enemies.map(e=>[e,point(e)])),shots:new Map(w.projectiles.map(s=>[s,point(s)]))};},
   between(w,last,a){
    if(!last||last.playerRef!==w.player||last.index!==w.index)return w;
    a=Math.max(0,Math.min(1,a));
    const mix=(p,old)=>{if(!p||!old||Math.hypot((p.x||0)-(old.x||0),(p.y||0)-(old.y||0))>160)return p;const out={...p};for(const k of fields)if(Number.isFinite(p[k])&&Number.isFinite(old[k]))out[k]=old[k]+(p[k]-old[k])*a;return out;};
-   return Object.assign(Object.create(w),{time:last.time+(w.time-last.time)*a,camera:Math.abs(w.camera-last.camera)<160?last.camera+(w.camera-last.camera)*a:w.camera,player:mix(w.player,last.player),runner:mix(w.runner,last.runner),companion:mix(w.companion,last.companion),level:{...w.level,npc:mix(w.level.npc,last.npc),boss:mix(w.level.boss,last.boss),enemies:w.level.enemies.map((e,i)=>mix(e,last.enemies[i]))},projectiles:w.projectiles.map(s=>mix(s,last.shots.get(s)))});
+   return Object.assign(Object.create(w),{time:last.time+(w.time-last.time)*a,camera:Math.abs(w.camera-last.camera)<160?last.camera+(w.camera-last.camera)*a:w.camera,player:mix(w.player,last.player),runner:mix(w.runner,last.runner),companion:mix(w.companion,last.companion),level:{...w.level,npc:mix(w.level.npc,last.npc),boss:mix(w.level.boss,last.boss),enemies:w.level.enemies.map(e=>mix(e,last.enemies.get(e)))},projectiles:w.projectiles.map(s=>mix(s,last.shots.get(s)))});
   }
  };
  root.drawGurovRocketJaw=function(c,x,y,scale,phase,angle){
