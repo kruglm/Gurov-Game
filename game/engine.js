@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const W = 1280, H = 720, PLAYER_W = 54, PLAYER_H = 123, PLAYER_ART_H = 146;
+  const CROUCH={height:72,speed:110,duration:.12,mouthHeight:52};
   const FINAL_LEVEL=3,CAMPAIGN=3;
   const UPGRADES=Object.freeze({paperHeal:2,paperDuration:1.2,paperCooldown:20,lowHealth:2,homingRange:760,homingSpeed:620,homingTurn:5.5});
   const COMBAT=Object.freeze({hit:2,heavy:3,romanHP:3,erikHP:30,ivanHP:36,maxHostile:32,romanTell:.65,romanRushSpeed:365,romanRushTime:.42,romanRecovery:.85,ivanCycle:2.5,ivanWallTell:.9,ivanWallLife:5,ivanWallHP:2,ivanWallCool:8,ivanHealCharges:2,ivanHealDelay:1.4,ivanHealAmount:2,
@@ -174,7 +175,7 @@
       const cp=this.level.checkpoints[this.checkpoint];
       this.level.enemies=this.level.enemies.filter(e=>!e.summoned);
       if(this.index===FINAL_LEVEL&&this.level.boss&&!this.level.boss.active&&!this.level.boss.defeated)this.level.boss.x=Math.max(this.level.boss.x,cp.x+480);
-      this.player={x:cp.x,y:cp.y-PLAYER_H,w:PLAYER_W,h:PLAYER_H,vx:0,vy:0,facing:1,grounded:false,jumps:0,coyote:0,jumpBuffer:0,hp:5,inv:1.2,shoot:0,cast:0,dash:0,dashCool:0,gait:0,landing:0,eating:0,healFlash:0};
+      this.player={x:cp.x,y:cp.y-PLAYER_H,w:PLAYER_W,h:PLAYER_H,crouch:0,vx:0,vy:0,facing:1,grounded:false,jumps:0,coyote:0,jumpBuffer:0,hp:5,inv:1.2,shoot:0,cast:0,dash:0,dashCool:0,gait:0,landing:0,eating:0,healFlash:0};
       this.camera=clamp(this.player.x-W*.3,0,this.level.width-W);
       for(const e of this.level.enemies){e.phase='patrol';e.aim=null;e.actionTime=0;e.attackCool=Math.max(e.attackCool||0,1.2);e.vx=(e.facing||1)*e.patrolSpeed;}
       this.intro=null;this.nearCatch=false;this.nearFaculty=null;this.nearNpc=null;this.nearSign=null;if(this.runner){Object.assign(this.runner,{x:cp.x+600,y:610,vx:0,gait:0,phase:'run',facing:1,patrol:null,patrolDir:-1,escaped:false});}if(this.companionUnlocked)this.spawnCompanion();
@@ -184,7 +185,13 @@
     save() { return {version:1,campaign:CAMPAIGN,upgrade:this.upgrade,paperCooldown:this.paperCooldown,pendingUpgrade:this.pendingUpgrade,chapterComplete:this.won&&this.index<FINAL_LEVEL,pendingScene:this.pendingScene,pendingBossOutro:this.pendingBossOutro,awaitingRespawn:this.awaitingRespawn,deathCause:this.deathCause,deathSource:this.deathSource,chapterStart:{...this.chapterStart,stats:{...this.chapterStart.stats}},courseworkObtained:this.courseworkObtained,companionUnlocked:this.companionUnlocked,cameoHelped:!!this.level.npc?.helped,level:this.index,checkpoint:this.checkpoint,taken:this.level.items.filter(i=>i.taken).map(i=>i.id),stats:{...this.stats},bossDefeated:!!this.level.boss?.defeated}; }
     chooseUpgrade(kind){if(this.upgrade||!this.pendingUpgrade||!['homing','paper'].includes(kind))return false;this.upgrade=kind;this.pendingUpgrade=false;this.emit('save');return true;}
     heal(amount,source){const p=this.player,restored=Math.min(5-p.hp,Math.max(0,amount));if(restored<=0||this.awaitingRespawn)return 0;p.hp+=restored;p.healFlash=2;this.emit('heal',{x:p.x+p.w/2,y:p.y+52,amount:restored,source});return restored;}
-    eatPaper(){const p=this.player;if(this.upgrade!=='paper'||this.paperCooldown>0||p.eating>0||p.hp>=5||!p.grounded||p.dash>0||this.won||this.awaitingRespawn||this.intro)return false;p.eating=UPGRADES.paperDuration;p.cast=0;this.paperCooldown=UPGRADES.paperCooldown;this.emit('paperEat');this.emit('save');return true;}
+    canStand(){const p=this.player,standing={...p,y:p.y+p.h-PLAYER_H,h:PLAYER_H};return ![...this.level.platforms.filter(q=>q.kind==='floor'),...(this.level.boss?.walls||[]).filter(q=>q.hp>0)].some(q=>overlap(standing,q));}
+    setCrouch(amount){
+      const p=this.player,t=clamp(amount,0,1),h=PLAYER_H-(PLAYER_H-CROUCH.height)*t*t*(3-2*t),feet=p.y+p.h;
+      if(h>p.h&&!this.canStand())return false;
+      p.crouch=t;p.h=h;p.y=feet-h;return true;
+    }
+    eatPaper(){const p=this.player;if(this.upgrade!=='paper'||this.paperCooldown>0||p.eating>0||p.hp>=5||!p.grounded||p.dash>0||this.won||this.awaitingRespawn||this.intro||!this.canStand())return false;this.setCrouch(0);p.eating=UPGRADES.paperDuration;p.cast=0;this.paperCooldown=UPGRADES.paperCooldown;this.emit('paperEat');this.emit('save');return true;}
     cancelEating(){if(this.player.eating<=0)return;this.player.eating=0;this.emit('paperInterrupted');}
     resumeCheckpoint(){if(!this.awaitingRespawn)return false;this.awaitingRespawn=false;this.deathCause=null;this.deathSource=null;this.player.healFlash=2;this.emit('heal',{x:this.player.x+this.player.w/2,y:this.player.y+52,amount:5,source:'respawn'});this.emit('respawn');this.emit('save');return true;}
     restartLevel(){return new World(this.index,{upgrade:this.upgrade,paperCooldown:this.paperCooldown,stats:{...this.chapterStart.stats,deaths:this.stats.deaths,elapsed:this.stats.elapsed},courseworkObtained:this.chapterStart.courseworkObtained,companionUnlocked:this.chapterStart.companionUnlocked});}
@@ -252,6 +259,9 @@
       const p=this.player,L=this.level;
       if(L.endless){this.updateRoof();this.updateSummons(dt);}
       ['inv','shoot','cast','dashCool','coyote','jumpBuffer','landing','healFlash'].forEach(k=>p[k]=Math.max(0,p[k]-dt));
+      const duck=input.crouch&&p.grounded&&p.dash<=0&&p.eating<=0&&!input.jump&&!input.dash&&!input.heal;
+      this.setCrouch((p.crouch||0)+(duck?1:-1)*dt/CROUCH.duration);
+      if((input.jump||input.dash)&&this.canStand())this.setCrouch(0);
       this.paperCooldown=Math.max(0,this.paperCooldown-dt);
       if(input.jump||input.dash)this.cancelEating();
       if(input.heal&&!input.jump&&!input.dash)this.eatPaper();
@@ -268,7 +278,8 @@
       }
       if(input.jump)p.jumpBuffer=.13;
       if(p.grounded){p.coyote=.11;p.jumps=0;}
-      if(p.jumpBuffer>0&&(p.grounded||p.coyote>0||p.jumps<2)){
+      if(p.jumpBuffer>0&&this.canStand()&&(p.grounded||p.coyote>0||p.jumps<2)){
+        this.setCrouch(0);
         const second=!p.grounded&&p.coyote<=0;
         p.vy=second?-610:-665;p.jumps=second?2:1;p.grounded=false;p.coyote=0;p.jumpBuffer=0;
         this.emit('jump',{x:p.x+p.w/2,y:p.y+p.h,second});
@@ -276,12 +287,12 @@
       if(input.jumpReleased&&p.vy<-270)p.vy=-270;
       const move=p.eating>0?0:(input.right?1:0)-(input.left?1:0);
       if(move)p.facing=move;
-      if(input.dash&&p.dashCool<=0){p.dash=.18;p.dashCool=.9;this.emit('dash',{x:p.x,y:p.y});}
+      if(input.dash&&p.dashCool<=0&&this.canStand()){this.setCrouch(0);p.dash=.18;p.dashCool=.9;this.emit('dash',{x:p.x,y:p.y});}
       if(p.dash>0){p.dash=Math.max(0,p.dash-dt);p.vx=p.facing*860;p.vy=0;}
-      else { const goal=move*305;p.vx+=(goal-p.vx)*Math.min(1,dt*(p.grounded?15:8));p.vy=Math.min(950,p.vy+1850*dt); }
+      else { const goal=move*(p.crouch>0?CROUCH.speed:305);p.vx+=(goal-p.vx)*Math.min(1,dt*(p.grounded?15:8));p.vy=Math.min(950,p.vy+1850*dt); }
       if(input.shoot&&p.shoot<=0&&p.eating<=0){
         p.shoot=.34;p.cast=.27;
-        const mouthX=p.x+p.w/2+p.facing*27,mouthY=p.y+25.5;
+        const t=p.crouch||0,duck=t*t*(3-2*t),mouthX=p.x+p.w/2+p.facing*27,mouthY=p.y+p.h-(PLAYER_H-25.5)*(1-duck)-CROUCH.mouthHeight*duck;
         const homing=this.upgrade==='homing';
         this.projectiles.push({type:'jaw',homing,x:mouthX-13,y:mouthY-9,w:26,h:18,vx:p.facing*(homing?UPGRADES.homingSpeed:690),vy:homing?0:70,life:homing?1.8:1.5,age:0,bounces:homing?0:2,enemy:false});
         this.emit('shoot',{x:mouthX,y:mouthY,facing:p.facing});
@@ -666,6 +677,6 @@
     bossOpen(){const b=this.level.boss;return !!b&&b.active&&!b.defeated&&!b.exhausted&&(b.kind==='ivan'||b.timer%6>=1.15);}
 
   }
-  const api={World,levelData,CHAPTERS,ROMAN_LINES,RAVIL_LINES,RAVIL_BATTLE_LINES,FINAL_LEVEL,CAMPAIGN,COMBAT,UPGRADES,migrateSave,W,H,PLAYER_W,PLAYER_H,PLAYER_ART_H,clamp,overlap,lisp};
+  const api={World,levelData,CHAPTERS,ROMAN_LINES,RAVIL_LINES,RAVIL_BATTLE_LINES,FINAL_LEVEL,CAMPAIGN,COMBAT,UPGRADES,CROUCH,migrateSave,W,H,PLAYER_W,PLAYER_H,PLAYER_ART_H,clamp,overlap,lisp};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GurovEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

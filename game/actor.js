@@ -86,6 +86,7 @@
       const alpha=p.inv>0&&Math.floor(time*13)%2===0?.42:1;
       const character=p.healFlash>0||p.eating>0?'gurov-happy':p.hp<=GurovEngine.UPGRADES.lowHealth?'gurov-tired':'gurov';
       this.playerMood=character;
+      if(p.crouch>0&&p.dash<=0&&p.eating<=0&&cast.drawCrouch(ctx,character,p,x,feet,alpha))return;
       if(p.eating>0){pose=14+Math.floor((GurovEngine.UPGRADES.paperDuration-p.eating)*7)%2;}
       else if(character==='gurov-happy'&&pose>=14)pose=0;
       this.drawDashShield(ctx,p,x);

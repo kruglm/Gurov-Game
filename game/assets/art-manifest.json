@@ -13,7 +13,8 @@
       "gurov-tired": "assets/acting/gurov-tired-v2.1.png",
       "gurov-happy": "assets/acting/gurov-happy-v2.1.png"
     },
-    "GUROV_CAPTIVE_DATA": "assets/ravil-captive-v1.7.4.png"
+    "GUROV_CAPTIVE_DATA": "assets/ravil-captive-v1.7.4.png",
+    "GUROV_CROUCH_DATA": "assets/acting/gurov-crouch-v2.8.1.png"
   },
   "assets/illustrations-data.js": {
     "GUROV_ILLUSTRATION_DATA": {

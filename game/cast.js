@@ -11,8 +11,11 @@
       const captive=new Image();captive.onload=()=>{this.captive=this.prepare(captive,1,'ravil-captive',2);this.checkReady();};
       captive.onerror=()=>console.error('Cannot load captive Ravil');
       captive.src=root.GUROV_CAPTIVE_DATA||'assets/ravil-captive-v1.7.4.png';
+      const crouch=new Image();crouch.onload=()=>{this.crouch=this.prepare(crouch,3,'gurov-crouch');this.checkReady();};
+      crouch.onerror=()=>console.error('Cannot load crouching Gurov');
+      crouch.src=root.GUROV_CROUCH_DATA||'assets/acting/gurov-crouch-v2.8.1.png';
     }
-    checkReady(){this.ready=Object.keys(this.actors).length===9&&!!this.captive;}
+    checkReady(){this.ready=Object.keys(this.actors).length===9&&!!this.captive&&!!this.crouch;}
     prepare(image,rows,name,columns=4){
       const width=rows===4?1280:Math.round(image.width/columns)*columns,height=rows===4?1280:Math.round(image.height/rows)*rows;
       const atlas=document.createElement('canvas');atlas.width=width;atlas.height=height;
@@ -64,6 +67,16 @@
       // Brief whole-body actions preserve arms and silhouette. Callers resume
       // the distance-based stride immediately after the release accent.
       this.draw(ctx,name,pose===-1?stride:pose,x,feet,height,facing,0,alpha,sinister);
+    }
+    drawCrouch(ctx,name,p,x,feet,alpha){
+      if(!this.crouch)return false;
+      const row=name==='gurov-happy'?1:name==='gurov-tired'?2:0;
+      const column=p.crouch<.55?0:p.cast>0?3:Math.abs(p.vx)>20&&Math.floor(p.gait*4)%2?2:1;
+      const f=this.crouch.frames[row*4+column];
+      // One pixel scale across all twelve poses: knees bend, the head never shrinks.
+      const scale=96/this.crouch.frames[1].image.height;
+      ctx.save();ctx.translate(x,feet);ctx.scale(p.facing*scale,scale);ctx.globalAlpha=alpha;ctx.imageSmoothingEnabled=true;
+      ctx.drawImage(f.image,-f.anchor,-f.image.height);ctx.restore();return true;
     }
     draw(ctx,name,index,x,feet,height,facing=-1,bob=0,alpha=1,sinister=false){
       const actor=this.actors[name];if(!actor)return;

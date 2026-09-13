@@ -1,6 +1,6 @@
 /* Render-only effects and interpolation. Simulation/save coordinates stay authoritative. */
 (function(root){
- const fields=['x','y','vx','vy','gait'];
+ const fields=['x','y','h','crouch','vx','vy','gait'];
  const point=p=>p?Object.fromEntries(fields.map(k=>[k,p[k]])):null;
  root.GurovRender={
   capture(w){return {playerRef:w.player,index:w.index,time:w.time,camera:w.camera,player:point(w.player),runner:point(w.runner),companion:point(w.companion),npc:point(w.level.npc),boss:point(w.level.boss),enemies:new Map(w.level.enemies.map(e=>[e,point(e)])),shots:new Map(w.projectiles.map(s=>[s,point(s)]))};},
