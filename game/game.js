@@ -56,7 +56,13 @@
       target?.focus({preventScroll:true});card.scrollTop=0;
     });
   }
-  function closeDialog(){sound.stopSpeech(); $('modal').classList.add('hidden');$('modal').classList.remove('story-modal');mode=previousMode;modalClose=null;keys.clear();pressed.clear();released.clear();sound.setState(mode==='play'?'play':'menu'); }
+  function syncGameplayMusic(){
+    if(mode!=='play'||!world)return;
+    const b=world.level.boss;
+    sound.setContext?.(world.index,b?b.hp/b.maxHp:1);
+    sound.setState(world.intro?'intro':b?.active&&!b.defeated?'boss':'play');
+  }
+  function closeDialog(){sound.stopSpeech(); $('modal').classList.add('hidden');$('modal').classList.remove('story-modal');mode=previousMode;modalClose=null;keys.clear();pressed.clear();released.clear();if(mode==='play')syncGameplayMusic();else sound.setState('menu'); }
   function storyPortrait(){if(story)story.portraitReady=drawGurovPortrait($('story-portrait'),cast,GurovStory[story.kind][story.index],clock-story.started);}
   function showStory(kind){
     if(story||bossOutro||!GurovStory[kind])return;
@@ -110,7 +116,7 @@
     clearBossOutro();clearDeath();story=null;modalClose=null;keys.clear();pressed.clear();released.clear();accum=0;
     world=prepared||new World(index,saved);index=world.index;$('stage').classList.toggle('summer-yard',index===0);if(index===2)GurovIllustrations.loadFaculty();effects.length=0;Object.keys(hudCache).forEach(k=>delete hudCache[k]);mode='play';$('menu').classList.add('hidden');$('hud').classList.remove('hidden');$('modal').classList.add('hidden');
     $('chapter-no').textContent=`0${index+1} / 04`;$('chapter-name').textContent=CHAPTERS[index].name;$('chapter-subject').textContent=CHAPTERS[index].subject;
-    document.querySelectorAll('.collection-stat').forEach(e=>e.classList.toggle('hidden',index===FINAL_LEVEL));$('pages-stat').classList.toggle('hidden',index>=2);$('boss-hud').classList.add('hidden');sound.setState('play');persist();
+    document.querySelectorAll('.collection-stat').forEach(e=>e.classList.toggle('hidden',index===FINAL_LEVEL));$('pages-stat').classList.toggle('hidden',index>=2);$('boss-hud').classList.add('hidden');syncGameplayMusic();persist();
     if(saved?.level===index&&index>0&&saved.campaign!==CAMPAIGN)toast('Глава обновлена: начнём её с новой расстановки. Итоговый счёт сохранён.',6);
     const resume=()=>{
       if(world.awaitingRespawn)showDeath();
@@ -204,7 +210,7 @@
     if(!deathScreen?.ready||!world?.awaitingRespawn)return;
     sound.init();
     if(restart){const fresh=world.restartLevel();enterLevel(fresh.index,null,false,fresh);sound.sfx('respawn');toast('Новая попытка. Глава началась заново.',3);}
-    else{clearDeath();world.resumeCheckpoint();mode='play';$('hud').classList.remove('hidden');sound.setState('play');events();if(world.pendingScene)showStory(world.pendingScene);}
+    else{clearDeath();world.resumeCheckpoint();mode='play';$('hud').classList.remove('hidden');syncGameplayMusic();events();if(world.pendingScene)showStory(world.pendingScene);}
   }
   $('death-checkpoint').onclick=()=>retryDeath();$('death-restart').onclick=()=>retryDeath(true);
   $('death-menu').onclick=()=>{if(deathScreen?.ready)mainMenu();};
@@ -460,9 +466,7 @@
   function updateHud(){
     const p=world.player,b=world.level.boss;
     const cinema=!!world.intro;if(hudCache.cinema!==cinema){$('hud').classList.toggle('cinematic',cinema);hudCache.cinema=cinema;}
-    const musicState=world.intro?'intro':b?.active&&!b.defeated?'boss':'play';
-    sound.setContext?.(world.index,b?b.hp/b.maxHp:1,!!world.companion);
-    if(mode==='play'&&sound.state!==musicState)sound.setState(musicState);
+    syncGameplayMusic();
     const set=(id,value)=>{if(hudCache[id]!==value){$(id).textContent=value;hudCache[id]=value;}};
     if(hudCache.hp!==p.hp){$('health').innerHTML='♥'.repeat(p.hp)+`<span class="lost-heart">${'♥'.repeat(5-p.hp)}</span>`;$('health').setAttribute('aria-label',`Здоровье ${p.hp} из 5`);hudCache.hp=p.hp;}
     set('pages',world.pages+' / 3');set('sparks',world.stats.sparks);
