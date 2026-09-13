@@ -58,7 +58,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    const s=__sound;s.setState('pause');const paused=s.jumpNodes.size===0&&!s.jumpEffort(false);
    s.setState('play');s.jumpEffort(false);s.toggle();const muted=s.jumpNodes.size===0&&!s.jumpEffort(false);
    s.toggle();await s.ctx.resume();s.jumpEffort(false);s.suspend();const blurred=s.jumpNodes.size===0;
-   await s.ctx.resume();s.enabled=true;s.jumpEffort(false);s.close();return {paused,muted,blurred,closed:s.jumpNodes.size===0};
+   s.resume();await s.ctx.resume();s.enabled=true;s.jumpEffort(false);s.close();return {paused,muted,blurred,closed:s.jumpNodes.size===0};
   });
   assert.deepEqual(cleanup,{paused:true,muted:true,blurred:true,closed:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);

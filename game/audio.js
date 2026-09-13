@@ -13,7 +13,9 @@
         this.next=this.ctx.currentTime+.05;this.prepareEfforts();
 
       }
-      if(this.enabled)this.ctx.resume().then(()=>{this.update();this.onChange?.();}).catch(()=>{this.onChange?.();});
+      // A late decoder or UI callback must not unlock audio in a hidden window.
+      if(this.backgroundPaused)this.ctx.suspend().catch(()=>{});
+      else if(this.enabled)this.ctx.resume().then(()=>{this.update();this.onChange?.();}).catch(()=>{this.onChange?.();});
       this.onChange?.();
     }
     toggle(){this.enabled=!this.enabled;if(this.enabled)this.init();if(!this.enabled){this.stopSpeech();this.stopEfforts();}if(this.ctx)this.master.gain.setTargetAtTime(this.enabled?.6:0,this.ctx.currentTime,.04);this.onChange?.();return this.enabled;}
@@ -181,7 +183,10 @@
       else if(name==='bossShot'){tone(43,.2,.055,50,0,'triangle');}
       else if(name==='shield'){tone(96,.08,.04,88);}
     }
-    suspend(preserveSpeech=false){if(!preserveSpeech)this.stopSpeech();this.stopEfforts();if(this.ctx)this.ctx.suspend().catch(()=>{});}
+    // Freeze the audio clock itself: live sources, playlists and a boss entrance's
+    // tape-stop automation retain their exact positions. Scene changes still cancel.
+    suspend(){this.backgroundPaused=true;this.stopEfforts();if(this.ctx)this.ctx.suspend().catch(()=>{});}
+    resume(){this.backgroundPaused=false;this.init();}
     close(){this.requestID++;this.musicNodes.forEach(n=>{try{n.source.stop();}catch(e){}});this.musicNodes.clear();this.stopSpeech();this.stopEfforts();this.voices.forEach(v=>{try{v.stop();}catch(e){}});this.voices.clear();if(this.ctx)this.ctx.close();}
   }
   root.GurovSound=Soundtrack;

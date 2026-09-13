@@ -1,7 +1,7 @@
 import Cocoa
 import WebKit
 
-final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
+final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     var window: NSWindow!
     var webView: WKWebView!
     let verifying = CommandLine.arguments.contains("--verify-game")
@@ -27,6 +27,16 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
 
         let config = WKWebViewConfiguration()
         config.websiteDataStore = verifying ? .nonPersistent() : .default()
+        if verifying {
+            config.userContentController.add(self, name: "verifyMinimize")
+            config.userContentController.addUserScript(WKUserScript(source: """
+            let Sound;
+            Object.defineProperty(window, 'GurovSound', {
+                get() { return Sound; },
+                set(api) { Sound = class extends api { constructor(...args) { super(...args); window.__verifySound = this; } }; }
+            });
+            """, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         config.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -57,6 +67,16 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Гуров — Последний удовл", .applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.7.0", .credits: NSAttributedString(string: "Авторская игра о вымышленном профессоре.\nЧетыре главы, одно доказательство.\nВнешность вдохновлена открытым портретом С. И. Гурова, ВМК МГУ.")])
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard verifying, message.name == "verifyMinimize" else { return }
+        window.miniaturize(nil)
+        // Use the host clock: WebKit is allowed to stop page timers when hidden.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.window.deminiaturize(nil)
+            self.window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard verifying else { return }
         let script = """
@@ -75,6 +95,23 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         if (gurov.state.audio.time <= menuAudio.time) throw Error('Menu audio clock is stopped');
         document.getElementById('start').click();
         if (gurov.state.mode === 'prologue') document.getElementById('prologue-skip').click();
+        for (let i = 0; i < 100 && !__verifySound.voiceActive; i++) await wait(50);
+        if (!__verifySound.voiceActive) throw Error('Chapter narration did not start');
+        await wait(150);
+        const heldSound = __verifySound, heldJob = heldSound.voiceJob, heldSource = heldSound.speechSource;
+        let blurred = false, restored = null, pausedAt = null;
+        addEventListener('blur', () => { blurred = gurov.state.backgroundPaused; pausedAt = heldSound.ctx.currentTime; }, {once:true});
+        addEventListener('focus', () => {
+            restored = {sameJob:heldSound.voiceJob === heldJob, sameSource:heldSound.speechSource === heldSource,
+                audioElapsed:heldSound.ctx.currentTime - pausedAt, resumed:!gurov.state.backgroundPaused};
+        }, {once:true});
+        webkit.messageHandlers.verifyMinimize.postMessage('minimize');
+        for (let i = 0; i < 100 && !restored; i++) await wait(50);
+        if (!blurred || !restored?.sameJob || !restored?.sameSource || !restored?.resumed || restored.audioElapsed > .12) throw Error('Native minimize lost narration: ' + JSON.stringify({blurred,restored}));
+        const resumedTime = heldSound.ctx.currentTime;
+        await wait(200);
+        if (heldSound.ctx.currentTime <= resumedTime) throw Error('Narration stayed suspended after restoring window');
+        const focusResume = {blurred, ...restored};
         document.querySelector('#modal-actions button').click();
         await wait(400);
         resumeAutoPause();
@@ -110,7 +147,7 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
             voiceCheck.stopSpeech();
         }
         voiceCheck.close();
-        return JSON.stringify({engine:'WKWebView',menuAutoplay:menuAudio,state:gurov.state,music:GurovMusicBank.loaded,save:!!localStorage.getItem('gurov-last-lemma-v1')});
+        return JSON.stringify({engine:'WKWebView',menuAutoplay:menuAudio,focusResume,state:gurov.state,music:GurovMusicBank.loaded,save:!!localStorage.getItem('gurov-last-lemma-v1')});
         """
         webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
             switch result {
