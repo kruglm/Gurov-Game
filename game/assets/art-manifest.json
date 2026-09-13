@@ -68,7 +68,11 @@
     "GUROV_PROLOGUE_DATA": {
       "hall": "assets/prologue/hall.png",
       "crowd": "assets/prologue/crowd.png",
-      "principals": "assets/prologue/principals.png"
+      "principals": "assets/prologue/principals.png",
+      "run-mustard": "assets/prologue/run-mustard-v2.png",
+      "run-teal": "assets/prologue/run-teal-v2.png",
+      "run-burgundy": "assets/prologue/run-burgundy-v2.png",
+      "run-ivory": "assets/prologue/run-ivory-v2.png"
     }
   }
 }

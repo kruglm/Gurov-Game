@@ -2,6 +2,7 @@
 (function(root){
  'use strict';
  const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),smooth=v=>{v=clamp(v);return v*v*(3-2*v);};
+ const crowd=root.GurovCrowd,ivanSeat=crowd.IVAN;
  const art={ready:false,failed:false,frames:{},hall:null};let loaded=0;
  function split(im,cols,rows,key){
   const frames=[],edges=key==='crowd'?[0,338/1086,706/1086,1]:[0,575/1024,1];
@@ -16,24 +17,28 @@
    c.putImageData(pixels,0,0);frames.push({canvas,l,t,w:r-l+1,h:b-t+1});
   }return frames;
  }
- for(const key of ['hall','crowd','principals']){
-  const im=new Image();im.onload=()=>{if(key==='hall'){art.hall=document.createElement('canvas');art.hall.width=1280;art.hall.height=720;art.hall.getContext('2d').drawImage(im,0,0,1280,720);}else art.frames[key]=split(im,key==='crowd'?4:3,key==='crowd'?3:2,key);art.ready=++loaded===3;};
-  im.onerror=()=>{art.failed=true;console.error('Opening artwork unavailable: '+key);};im.src=root.GUROV_PROLOGUE_DATA?.[key]||'assets/prologue/'+key+'.png';
+ for(const key of ['hall','crowd','principals',...crowd.names.map(n=>'run-'+n)]){
+  const im=new Image();im.onload=()=>{if(key==='hall'){art.hall=document.createElement('canvas');art.hall.width=1280;art.hall.height=720;art.hall.getContext('2d').drawImage(im,0,0,1280,720);}else if(key.startsWith('run-'))crowd.prepareSheet(im,crowd.names.indexOf(key.slice(4)));else art.frames[key]=split(im,key==='crowd'?4:3,key==='crowd'?3:2,key);art.ready=++loaded===7;};
+  im.onerror=()=>{art.failed=true;console.error('Opening artwork unavailable: '+key);};im.src=root.GUROV_PROLOGUE_DATA?.[key]||'assets/prologue/'+key+(key.startsWith('run-')?'-v2':'')+'.png';
  }
  function sprite(c,key,i,x,feet,height,reference=i,facing=1,angle=0){
   const f=art.frames[key]?.[i],ref=art.frames[key]?.[reference];if(!f||!ref)return;
   const s=height/ref.h;c.save();c.translate(x,feet);c.scale(facing,1);c.rotate(angle);c.imageSmoothingEnabled=true;c.drawImage(f.canvas,f.l,f.t,f.w,f.h,-f.w*s/2,-f.h*s,f.w*s,f.h*s);c.restore();
  }
- function student(c,id,x,feet,height,time,running=true,facing=1){
-  const cycle=time*8+id*.8,frame=running?4+id+(Math.floor(cycle)%2)*4:id;
-  sprite(c,'crowd',frame,x,feet-(running?Math.abs(Math.sin(cycle*Math.PI))*2:Math.sin(time*1.4+id)*.6),height,4+id,facing,running?Math.sin(cycle*Math.PI)*.018:0);
+ function student(c,id,x,feet,height,time,running=true,facing=1,phase=0,lean=0){
+  if(running){crowd.run(c,id,x,feet,height,time*2*Math.PI+phase,facing,lean);return;}
+  sprite(c,'crowd',id,x,feet-Math.sin(time*1.4+phase)*.4,height,4+id,facing);
+ }
+ function foreground(c,row){
+  const r=crowd.ROWS[row];c.save();c.beginPath();c.moveTo(0,r.back[0]+5);
+  r.x.forEach((x,i)=>{const w=r.width*.5,y=r.back[i];c.lineTo(x-w,y+9);c.quadraticCurveTo(x-w,y,x-w+10,y);c.lineTo(x+w-10,y);c.quadraticCurveTo(x+w,y,x+w,y+9);});
+  c.lineTo(r.aisle-8,r.back.at(-1)+28);c.lineTo(1280,720);c.lineTo(0,720);c.closePath();c.clip();c.drawImage(art.hall,0,0);c.restore();
  }
  function text(c,value,x,y,size,color='#f2dfb3',align='left') {c.font=`${size>=24?'bold ':''}${size}px Georgia,serif`;c.fillStyle=color;c.textAlign=align;c.fillText(value,x,y);}
  function wrap(c,value,width){const rows=[];let line='';for(const word of value.split(' ')){const next=line?line+' '+word:word;if(c.measureText(next).width>width&&line){rows.push(line);line=word;}else line=next;}if(line)rows.push(line);return rows;}
- const seats=Array.from({length:30},(_,i)=>{const row=Math.floor(i/10),column=i%10;return {row,id:i%4,x:45+column*100+row*8,feet:477+row*91,h:126+row*15,delay:row*.65+(9-column)*.16};});
  class Prologue{
-  constructor(){this.index=0;this.time=0;this.elapsed=0;this.phase='line';this.fade=0;this.quiet=0;this.spoken=false;this.done=false;this.cues=new Set();this.escape=0;this.reduced=root.matchMedia('(prefers-reduced-motion: reduce)').matches;}
-  get status(){return {index:this.index,time:this.time,elapsed:this.elapsed,phase:this.phase,escape:this.escape,tomatoHit:this.cues.has('splat'),seated:seats.filter(s=>this.escape<=s.delay).length,ready:art.ready};}
+  constructor({seed=Math.floor(Math.random()*4294967296)}={}){this.seats=crowd.audience(seed);this.seed=seed;this.index=0;this.time=0;this.elapsed=0;this.phase='line';this.fade=0;this.quiet=0;this.spoken=false;this.done=false;this.cues=new Set();this.escape=0;this.reduced=root.matchMedia('(prefers-reduced-motion: reduce)').matches;}
+  get status(){return {index:this.index,time:this.time,elapsed:this.elapsed,phase:this.phase,escape:this.escape,tomatoHit:this.cues.has('splat'),seated:this.seats.filter(s=>this.escape<=s.delay).length,audience:this.seats.length,seed:this.seed,ready:art.ready};}
   update(dt,sound,active){
    if(!active||this.done||!art.ready)return;
    if(this.phase==='line'){
@@ -82,30 +87,30 @@
     sprite(c,'principals',mix<.4?this.previousPose:pose,gx,gy+bob,208,0,1,angle+(this.reduced?0:Math.sin(mix*Math.PI)*.024));
     if(hit&&pose!==2){c.fillStyle='#bb4430';c.beginPath();c.ellipse(gx+7,gy-113,7,9,-.3,0,Math.PI*2);c.fill();}
    }
-   // Students sit BEHIND the painted backs of their seats. The lower body of
-   // the seated atlas is occluded; no floating crossed legs in the auditorium.
+   // One person per painted chair. Row foregrounds occlude seated bodies
+   // and runners until they reach the side aisle; feet never cross a desk.
+   const runners=this.seats.map(s=>crowd.runner(s,panic)).filter(r=>r&&!r.done);
    for(let row=0;row<3;row++){
-    for(const s of seats.filter(s=>s.row===row)){
-     if(panic>s.delay)continue;
-     if(row===0&&Math.abs(s.x-845)<35)continue;
-     student(c,s.id,s.x,s.feet,s.h,this.elapsed,false);
+    for(const s of this.seats.filter(s=>s.row===row)){
+     const r=crowd.runner(s,panic);
+     if(r&&r.age>=.2)continue;
+     const rise=r?smooth(r.age/.2)*8:0;
+     student(c,s.id,s.x,s.feet-rise,s.h,this.elapsed,false,1,s.phase);
     }
-    const sy=[449,518,611][row],height=[29,51,109][row];c.drawImage(art.hall,0,sy,1080,height,0,sy,1080,height);
+    for(const r of runners.filter(r=>r.s.row===row&&!r.aisle&&r.age>=.2)){
+     student(c,r.s.id,r.x,r.y,r.h,r.distance/(r.h*.78),true,1,r.s.phase,r.s.lean);
+    }
+    if(row===0&&i<2){c.save();c.beginPath();c.rect(ivanSeat.x-48,345,96,150);c.clip();cast?.draw(c,'ivan',0,ivanSeat.x,ivanSeat.feet+30,ivanSeat.height,-1);c.restore();}
+    foreground(c,row);
    }
-   if(i<2){
-    c.save();c.beginPath();c.rect(795,354,103,95);c.clip();cast?.draw(c,'ivan',0,846,510,144,-1);c.restore();
-    c.drawImage(art.hall,798,449,96,27,798,449,96,27);
+   for(const r of runners.filter(r=>r.aisle).sort((a,b)=>a.y-b.y)){
+    c.save();c.globalAlpha=r.alpha;student(c,r.s.id,r.x,r.y,r.h,r.distance/(r.s.h*.78),true,1,r.s.phase,r.s.lean);c.restore();
    }
-   const runners=seats.filter(s=>panic>s.delay).map(s=>{
-    const age=panic-s.delay,toAisle=(1127-s.x)/230,u=clamp((age-toAisle)/1.65),travel=clamp(age/(toAisle+1.65));
-    return {s,age,travel,x:Math.min(1127,s.x+age*230)+u*63,y:s.feet+(336-s.feet)*u,h:s.h+(105-s.h)*u};
-   }).filter(s=>s.travel<1).sort((a,b)=>a.y-b.y);
-   for(const r of runners){c.save();c.globalAlpha=1-smooth((r.travel-.93)/.07);student(c,r.s.id,r.x,r.y,r.h,r.age+r.s.delay,true);c.restore();}
    if(i>=2&&i<4){
-    if(i===2&&t<2.85){const rise=smooth(t/.45),pose=t<1.25?3:t<1.85?4:5;sprite(c,'principals',pose,846,478+(1-rise)*52,156,5);}
-    else{const age=Math.max(0,panic-.8),u=smooth(age/3.4);if(u<1)cast?.draw(c,'ivan',1+Math.floor(age*11)%6,846+u*340,478-u*142,156-u*40,1);}
+    if(i===2&&t<2.85){const rise=smooth(t/.45),pose=t<1.25?3:t<1.85?4:5;sprite(c,'principals',pose,ivanSeat.x,ivanSeat.feet+(1-rise)*42,156,5);}
+    else{const age=Math.max(0,panic-.8),u=smooth(age/3.4);if(u<1)cast?.draw(c,'ivan',1+Math.floor(age*11)%6,ivanSeat.x+u*(1187-ivanSeat.x),ivanSeat.feet-u*(ivanSeat.feet-336),156-u*40,1);}
    }
-   if(i===2&&t>=1.25&&t<2.05){const u=(t-1.25)/.8,x=784+(695-784)*u,y=381+(245-381)*u-Math.sin(u*Math.PI)*78;root.GurovItems.draw(c,'tomato',x,y,27,27,t*10);}
+   if(i===2&&t>=1.25&&t<2.05){const u=(t-1.25)/.8,x=ivanSeat.x-62+(695-ivanSeat.x+62)*u,y=381+(245-381)*u-Math.sin(u*Math.PI)*78;root.GurovItems.draw(c,'tomato',x,y,27,27,t*10);}
    if(hit&&panic<.7){const u=panic/.7;c.save();c.globalAlpha=1-u;for(let n=0;n<13;n++){const a=n*2.399;c.fillStyle=n%2?'#e95837':'#a8291c';c.beginPath();c.ellipse(695+Math.cos(a)*u*68,245+Math.sin(a)*u*55+u*u*30,4*(1-u)+1,3,0,0,Math.PI*2);c.fill();}c.restore();}
    if(!this.reduced){c.fillStyle='#fff2bd44';for(let n=0;n<16;n++){const x=1000+Math.sin(n*2.4+this.elapsed*.2)*170,y=130+((n*31+this.elapsed*5)%250);c.fillRect(x,y,1.5,1.5);}}
    c.restore();
@@ -123,6 +128,7 @@
  }
  // Analytic bounded crowd: no ever-growing entity arrays or physics bodies.
  // Door coordinates follow the painted VMK panorama, including its parallax.
+ const yard=crowd.audience(924770).slice(0,18);
  function courtyard(c,world,time){
   if(!art.ready)return;const doorX=1225-world.camera*.25,doorY=513;
   c.save();c.beginPath();c.rect(0,440,1280,139);c.clip();
@@ -130,7 +136,7 @@
    const age=(time+j*.72)%12.96,u=clamp(age/1.4),dir=j%3===0?-1:1;
    const x=doorX+dir*(age*58+age*age*3),y=doorY+smooth(u)*44+(j%3)*5,h=29+smooth(u)*26;
    if(x< -80||x>1360)continue;c.globalAlpha=smooth(age/.24)*(1-smooth((age-11.5)/1.46));
-   student(c,j%4,x,y,h,age+j,true,dir);
+   student(c,yard[j].id,x,y,h,age*1.7,true,dir,yard[j].phase,yard[j].lean);
   }c.restore();
  }
  root.GurovPrologue=Prologue;root.GurovPrologueArt=art;root.GurovCourtyardCrowd={draw:courtyard,capacity:18};

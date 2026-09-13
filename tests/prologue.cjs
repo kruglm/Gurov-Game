@@ -21,7 +21,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.evaluate(({index,time})=>{let frames=0;while((__opening.index<index||__opening.time<time)&&frames++<15000)__advance(1);if(frames>=15000)throw Error('Opening stalled');},{index,time});
    await page.screenshot({path:dir+'/'+name+'.png'});shots.push(await page.evaluate(()=>gurov.state.prologue));
   }
-  assert.equal(shots[0].seated,30);assert.equal(shots[4].tomatoHit,true);assert.equal(shots.at(-1).seated,0);
+  assert.equal(shots[0].seated,21);assert.equal(shots[0].audience,21);assert.equal(shots[4].tomatoHit,true);assert.equal(shots.at(-1).seated,0);
   await page.evaluate(()=>{while(__opening.phase!=='title')__advance(1);__advance(100);});await page.screenshot({path:dir+'/title.png'});
   await page.evaluate(()=>__advance(800));assert.equal(await page.evaluate(()=>gurov.state.mode),'modal');assert.equal(await page.evaluate(()=>gurov.state.level),0);
   assert.equal(await page.evaluate(()=>!!JSON.parse(localStorage.getItem('gurov-last-lemma-v1')).pendingPrologue),false);
