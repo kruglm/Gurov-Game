@@ -23,6 +23,11 @@ def main():
     assert all(s['speed'] == 1 for s in edit['shots'])
     assert mix['maxSimultaneousMusic'] == 1
     music = sorted(mix['music'], key=lambda s: s['at'])
+    chase = next(s for s in edit['shots'] if s['name']=='chase')
+    title = next(s for s in edit['shots'] if s['name']=='title')
+    fast = [s for s in music if s['name']=='ivan']
+    assert len(fast)==1 and fast[0]['at']==chase['at'] and fast[0]['end']==title['at'], 'Fast theme must cover the whole chase montage'
+    assert not any(s['name']=='field' for s in music), 'Slower field theme returned'
     speech = sorted(mix['speech'], key=lambda s: s['at'])
     for rows in [music, speech]:
         assert all(a['end'] <= b['at'] for a, b in zip(rows, rows[1:])), 'Overlapping sources'
@@ -69,6 +74,7 @@ def main():
         voice = record['states'][0]['voice']
         assert voice['actor'] == 'roman' and voice['id'] == ident, name
     report = dict(duration=edit['duration'], dynamicFraction=edit['dynamicFraction'],
+                  fastMusicStart=fast[0]['at'],fastMusicSeconds=fast[0]['end']-fast[0]['at'],
                   gameplaySHA256=digest.hexdigest(), captures=captures, speech=[])
     output = P / 'review/v3-audit.json'
     output.parent.mkdir(parents=True, exist_ok=True)

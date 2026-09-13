@@ -12,7 +12,8 @@ def run(args):subprocess.run([FF,'-y','-v','error',*map(str,args)],check=True)
 def shot(name,source,start,d,audio=None,label=None,crop=None,subtitle=None):
     return dict(name=name,source=source,start=start,d=d,audio=audio,label=label,crop=crop,subtitle=subtitle)
 
-# 24 bars at 132 BPM, then 12 bars at 160 BPM. Durations snap to output frames.
+# Preserve the approved picture/voice timings. The 160 BPM score now enters
+# with the chase; changing music must not speed up the recorded gameplay.
 bar=240/132
 shots=[shot('opening','source-v2/cards/opening.mp4',0,6.5),shot('tomato','source-v2/capture/prologue.mp4',21.4,3.5)]
 block=[
@@ -51,10 +52,15 @@ for s in shots:
     start=round(time*60);time+=s['d'];end=round(time*60)
     s.update(at=start/60,d=(end-start)/60,frames=end-start,speed=1)
 by={s['name']:s for s in shots};DURATION=round(time*60)/60
-MUSIC=[dict(name='menu',at=0,end=10,gain=.31),dict(name='field',at=10,end=by['ivan-intro']['at'],gain=.72),dict(name='ivan',at=by['ivan-intro']['at'],end=by['title']['at'],gain=.70),dict(name='menu',at=by['title']['at'],end=by['sting']['at'],gain=.46)]
+MUSIC=[
+    dict(name='menu',at=0,end=by['chase']['at'],gain=.31),
+    dict(name='ivan',at=by['chase']['at'],end=by['title']['at'],gain=.70),
+    dict(name='menu',at=by['title']['at'],end=by['sting']['at'],gain=.46),
+]
 
 def plan():
-    data={'revision':'v3.1','duration':DURATION,'fps':60,'dynamicSeconds':by['title']['at']-10,'dynamicFraction':(by['title']['at']-10)/DURATION,'shots':shots,'music':MUSIC,'gameplaySpeed':1,'maxGameplayZoom':1280/896,'midJawVoice':False,'postTitleVoice':True}
+    fast=next(section for section in MUSIC if section['name']=='ivan')
+    data={'revision':'v3.2','duration':DURATION,'fps':60,'dynamicSeconds':by['title']['at']-10,'dynamicFraction':(by['title']['at']-10)/DURATION,'fastMusicStart':fast['at'],'fastMusicSeconds':fast['end']-fast['at'],'fastMusicBPM':160,'shots':shots,'music':MUSIC,'gameplaySpeed':1,'maxGameplayZoom':1280/896,'midJawVoice':False,'postTitleVoice':True}
     (P/'EDIT.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n');return data
 
 def render(s):
@@ -174,5 +180,6 @@ def export():
 if __name__=='__main__':
     data=plan();action=sys.argv[1] if len(sys.argv)>1 else 'all'
     print('PLAN',round(DURATION,3),'s,',round(data['dynamicFraction']*100,1),'% dynamic',flush=True)
-    if action in ['mix','all']:mix()
+    if action in ['mix','remix','all']:mix()
+    if action=='remix':mux()
     if action in ['render','all']:export()
