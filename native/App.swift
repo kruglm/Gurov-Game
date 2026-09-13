@@ -4,7 +4,8 @@ import WebKit
 final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     var window: NSWindow!
     var webView: WKWebView!
-    let verifying = CommandLine.arguments.contains("--verify-game")
+    let verifyingDeathFocus = CommandLine.arguments.contains("--verify-death-focus")
+    let verifying = CommandLine.arguments.contains("--verify-game") || CommandLine.arguments.contains("--verify-death-focus")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
@@ -23,6 +24,13 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         viewMenu.addItem(full)
         viewItem.submenu = viewMenu
         menu.addItem(viewItem)
+        let windowItem = NSMenuItem()
+        let windowMenu = NSMenu(title: "Окно")
+        windowMenu.addItem(withTitle: "Свернуть", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "Показать игру", action: #selector(restoreGameWindow), keyEquivalent: "")
+        windowItem.submenu = windowMenu
+        menu.addItem(windowItem)
+        NSApp.windowsMenu = windowMenu
         NSApp.mainMenu = menu
 
         let config = WKWebViewConfiguration()
@@ -36,6 +44,17 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
                 set(api) { Sound = class extends api { constructor(...args) { super(...args); window.__verifySound = this; } }; }
             });
             """, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            if verifyingDeathFocus {
+                config.userContentController.addUserScript(WKUserScript(source: """
+                let Engine;
+                Object.defineProperty(window, 'GurovEngine', {
+                    get() { return Engine; },
+                    set(api) { Engine = {...api, World: class extends api.World {
+                        constructor(...args) { super(...args); window.__verifyWorld = this; }
+                    }}; }
+                });
+                """, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            }
         }
         config.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: config)
@@ -48,6 +67,7 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         let width = min(1280.0, screen.width - 50)
         let height = min(720.0, screen.height - 100)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.title = "Гуров — Последний удовл"
         window.backgroundColor = NSColor(calibratedRed: 0.04, green: 0.07, blue: 0.12, alpha: 1)
         window.appearance = NSAppearance(named: .darkAqua)
@@ -66,16 +86,32 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
     @objc func showAbout() {
         NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Гуров — Последний удовл", .applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.7.0", .credits: NSAttributedString(string: "Авторская игра о вымышленном профессоре.\nЧетыре главы, одно доказательство.\nВнешность вдохновлена открытым портретом С. И. Гурова, ВМК МГУ.")])
     }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        restoreGameWindow()
+        return true
+    }
+    @objc func restoreGameWindow() {
+        NSApp.unhide(nil)
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(webView)
+        NSApp.activate(ignoringOtherApps: true)
+    }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard verifying, message.name == "verifyMinimize" else { return }
-        window.miniaturize(nil)
+        let action = message.body as? String ?? "minimize"
+        if action == "hide" { NSApp.hide(nil) }
+        else if action == "close" { window.performClose(nil) }
+        else if action == "shortcut", let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: "m", charactersIgnoringModifiers: "m", isARepeat: false, keyCode: 46) {
+            if NSApp.mainMenu?.performKeyEquivalent(with: event) != true || !window.isMiniaturized {
+                fputs("NATIVE DEATH FOCUS FAILED: Cmd+M did not minimize\n", stderr); exit(1)
+            }
+        }
+        else { window.performMiniaturize(nil) }
         // Use the host clock: WebKit is allowed to stop page timers when hidden.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            self.window.deminiaturize(nil)
-            self.window.makeKeyAndOrderFront(nil)
-            self.window.makeFirstResponder(self.webView)
-            NSApp.activate(ignoringOtherApps: true)
+            _ = self.applicationShouldHandleReopen(NSApp, hasVisibleWindows: false)
         }
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -85,6 +121,7 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(webView)
         NSApp.activate(ignoringOtherApps: true)
+        if verifyingDeathFocus { verifyDeathFocus(); return }
         let script = """
         const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
         const windowState = () => JSON.stringify({hidden:document.hidden,focused:document.hasFocus(),paused:gurov.state.backgroundPaused,context:gurov.state.audio.context});
@@ -177,6 +214,21 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
             case .failure(let error):
                 fputs("NATIVE SMOKE FAILED: \(error)\n", stderr)
                 exit(1)
+            }
+        }
+    }
+    func verifyDeathFocus() {
+        let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("tests/native-death-focus.js")
+        guard let script = try? String(contentsOf: url, encoding: .utf8) else {
+            fputs("NATIVE DEATH FOCUS FAILED: missing tests/native-death-focus.js\n", stderr); exit(1)
+        }
+        webView.callAsyncJavaScript(script + "\nreturn await verifyNativeDeathFocus();", arguments: [:], in: nil, in: .page) { result in
+            switch result {
+            case .success(let value):
+                print("NATIVE DEATH FOCUS PASS: \(value)")
+                NSApp.terminate(nil)
+            case .failure(let error):
+                fputs("NATIVE DEATH FOCUS FAILED: \(error)\n", stderr); exit(1)
             }
         }
     }

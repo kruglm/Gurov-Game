@@ -322,6 +322,8 @@
   $('menu-sound').onclick=toggleSound;refreshContinue();
   const handled=['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyS','KeyA','KeyD','KeyW','KeyJ','KeyX','KeyK','KeyH','ShiftLeft','ShiftRight','KeyE','Enter','Escape','KeyP','KeyM'];
   addEventListener('keydown',e=>{
+    // System shortcuts belong to the host window, including on the death menu.
+    if(e.metaKey||e.ctrlKey||e.altKey){keys.clear();pressed.clear();released.clear();return;}
     if(prologue){
       if(handled.includes(e.code)||e.code==='Tab')e.preventDefault();if(e.repeat)return;
       if(e.code==='KeyM')toggleSound();else if(e.code==='Tab')$('prologue-skip').focus();

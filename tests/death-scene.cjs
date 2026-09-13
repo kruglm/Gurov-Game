@@ -8,6 +8,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    const context=await browser.newContext({offline:true,viewport:{width:1280,height:720}}),page=await context.newPage();
    page.on('pageerror',e=>errors.push(String(e)));
    await page.addInitScript(require('./campaign-clock.cjs'));
+   await page.addInitScript(()=>{window.__testHidden=false;Object.defineProperty(document,'hidden',{get(){return __testHidden;}});});
    await page.addInitScript(level=>{
     localStorage.setItem('gurov-last-lemma-v1',JSON.stringify({version:1,campaign:3,level,checkpoint:level===1?1:0,upgrade:'homing'}));
     window.__draws=[];let engine,Cast;
@@ -34,6 +35,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    },scene);
    const fatal=await page.evaluate(()=>({state:gurov.state,draws:__draws,before:__fatalBefore}));
    assert.equal(fatal.state.mode,'dying');assert.equal(fatal.state.deathScreen,null);
+   const freeze=async()=>{
+    const before=await page.evaluate(()=>({mode:gurov.state.mode,death:gurov.state.playerDeath,screen:gurov.state.deathScreen,player:gurov.state.player}));
+    await page.evaluate(()=>{dispatchEvent(new Event('blur'));__testHidden=true;document.dispatchEvent(new Event('visibilitychange'));__advance(600);});
+    assert.deepEqual(await page.evaluate(()=>({mode:gurov.state.mode,death:gurov.state.playerDeath,screen:gurov.state.deathScreen,player:gurov.state.player})),before);
+    await page.evaluate(()=>{__testHidden=false;document.dispatchEvent(new Event('visibilitychange'));dispatchEvent(new Event('focus'));__advance(1);});
+    assert.equal(await page.evaluate(()=>gurov.state.mode),before.mode);
+   };
+   await freeze();
    if(scene.level===1)assert.equal(fatal.draws.filter(d=>d.actor==='ivan').length,0,'escaped Ivan must not reappear in Erik death backdrop');
    if(scene.level===0)assert.ok(fatal.draws.some(d=>d.actor==='ivan'),'a runner actually present at death stays visible');
    if(scene.level!==0){
@@ -49,6 +58,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.evaluate(()=>__advance(400));
    const theme=scene.cause==='fall'?'fall':scene.level===1?'erik':scene.level===3?'ivan':'roman';
    assert.equal(await page.evaluate(()=>gurov.state.deathScreen.theme),theme);
+   await freeze();
+   const shortcuts=await page.evaluate(()=>{
+    const before={mode:gurov.state.mode,player:gurov.state.player,sound:gurov.state.sound};
+    for(const modifier of ['metaKey','ctrlKey','altKey'])for(const code of ['KeyM','KeyR','Space','Escape'])
+     dispatchEvent(new KeyboardEvent('keydown',{code,[modifier]:true,cancelable:true}));
+    return {before,after:{mode:gurov.state.mode,player:gurov.state.player,sound:gurov.state.sound}};
+   });
+   assert.deepEqual(shortcuts.after,shortcuts.before,'system shortcuts cannot activate death-menu actions');
    await page.locator('#death-checkpoint').click();
    assert.equal(await page.evaluate(()=>gurov.state.mode),'play');
    assert.equal(await page.evaluate(()=>gurov.state.awaitingRespawn),false);
