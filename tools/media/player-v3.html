@@ -1,0 +1,14 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Гуров — Последний удовл · Видео</title>
+<style>html{color-scheme:dark}[hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:#091b25;color:#e9e1cc;font:16px/1.6 system-ui,sans-serif}main{max-width:1160px;margin:auto;padding:44px 24px}small{color:#99bebc;letter-spacing:.1em}h1{font:46px/1.1 Georgia,serif;margin:12px 0 24px}p{color:#afc4c4}video{width:100%;aspect-ratio:16/9;background:#030a10;border:1px solid #3c5558;border-radius:8px}nav{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}button,a{font:inherit}button{cursor:pointer;padding:10px 18px;background:#173441;color:#e7d8b4;border:1px solid #546d6b;border-radius:5px}button[aria-pressed=true]{background:#e0c48a;color:#152a34}a{color:#e7c991}#chapters{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}#chapters button{font-size:13px;padding:7px 12px}.downloads{display:flex;gap:22px;margin:22px 0}</style>
+<main><small>ОБНОВЛЁННЫЕ РОЛИКИ · 1080p / 60 FPS</small><h1>Гуров — Последний удовл</h1>
+<nav><button id="trailer" aria-pressed="true">Трейлер · 1:22</button><button id="gameplay" aria-pressed="false">Геймплей · 6:14</button></nav>
+<video id="video" controls preload="metadata" playsinline src="Gurov-Trailer-v3.mp4"></video>
+<p id="description">Трейлер v3: быстрая погоня, новые приёмы, знакомые голоса и последний аргумент после титра.</p><div id="chapters" hidden></div>
+<div class="downloads"><a href="Gurov-Trailer-v3.mp4" download>Скачать трейлер</a><a href="Gurov-Gameplay-v2.mp4" download>Скачать геймплей</a></div>
+</main><script>
+const video=document.querySelector('video'),chapters=document.getElementById('chapters');
+const entries=[[0,'Защита дипломов'],[45.6,'Летний двор'],[56.75,'Выбор улучшения'],[63.75,'Самонаведение'],[68.25,'Работы подопечных'],[74.25,'Саша Ситников'],[102.3167,'Эрик и Равиль'],[161.4333,'Кафедра'],[176.0333,'Чай'],[248.7333,'Прак, DL и байесы'],[332.8833,'Иван Павленко']];
+for(const [at,title] of entries){const b=document.createElement('button');b.textContent=title;b.onclick=()=>{video.currentTime=at;video.play();};chapters.append(b);}
+function select(name){video.pause();video.src=name==='trailer'?'Gurov-Trailer-v3.mp4':'Gurov-Gameplay-v2.mp4';video.load();for(const id of ['trailer','gameplay'])document.getElementById(id).setAttribute('aria-pressed',String(id===name));chapters.hidden=name!=='gameplay';document.getElementById('description').textContent=name==='trailer'?'Трейлер v3: быстрая погоня, новые приёмы, знакомые голоса и последний аргумент после титра.':'Смонтированная демонстрация игровых эпизодов из отдельных дублей: обычная скорость, полный звук, диалоги и оба босса. Сюжетные спойлеры.';}
+document.getElementById('trailer').onclick=()=>select('trailer');document.getElementById('gameplay').onclick=()=>select('gameplay');
+</script></html>

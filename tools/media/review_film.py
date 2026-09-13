@@ -5,8 +5,8 @@ import av
 from PIL import Image,ImageDraw,ImageFont
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('video',type=Path);parser.add_argument('--interval',type=float,default=1);parser.add_argument('--prefix');args=parser.parse_args()
-    root=Path('research/video-v2/review');root.mkdir(parents=True,exist_ok=True);name=args.prefix or args.video.stem
+    parser=argparse.ArgumentParser();parser.add_argument('video',type=Path);parser.add_argument('--interval',type=float,default=1);parser.add_argument('--prefix');parser.add_argument('--out',type=Path,default=Path('research/video-v2/review'));args=parser.parse_args()
+    root=args.out;root.mkdir(parents=True,exist_ok=True);name=args.prefix or args.video.stem
     with av.open(str(args.video)) as source:
         v=source.streams.video[0];meta={'file':args.video.name,'width':v.width,'height':v.height,'fps':float(v.average_rate),'frames':v.frames,'seconds':float(v.duration*v.time_base),'codec':v.codec_context.name}
         if source.streams.audio:meta['audioRate']=source.streams.audio[0].rate
