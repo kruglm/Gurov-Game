@@ -176,10 +176,13 @@
   }
   function beginPlayerDeath(fatal){
     if(playerDeath||deathScreen)return;
-    const player=world.player,camera=world.camera;world.player=fatal.player;world.camera=fatal.camera;shake=0;
-    gameScene(true);world.player=player;world.camera=camera;
+    const checkpoint=world;
+    world=Object.assign(Object.create(checkpoint),fatal.scene,{player:fatal.player,camera:fatal.camera});
+    try{
+      shake=0;gameScene(true);
+      playerDeath=new GurovPlayerDeath(fatal,world.level.platforms,matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }finally{world=checkpoint;}
     deathBackground=document.createElement('canvas');deathBackground.width=W;deathBackground.height=H;deathBackground.getContext('2d').drawImage(canvas,0,0);
-    playerDeath=new GurovPlayerDeath(fatal,world.level.platforms,matchMedia('(prefers-reduced-motion: reduce)').matches);
     mode='dying';story=null;accum=0;keys.clear();pressed.clear();released.clear();effects.length=0;toastTime=0;
     ['menu','modal','hud','low-health'].forEach(id=>$(id).classList.add('hidden'));$('toast').classList.remove('visible');sound.setState('pause');sound.stopSpeech();persist();
   }

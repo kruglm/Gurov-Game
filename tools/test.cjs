@@ -13,7 +13,7 @@ function run(file,env={}){
 }
 const group=process.argv[2]||'unit';
 if(group==='unit')run(['--test',...fs.readdirSync('tests').filter(f=>f.endsWith('.test.cjs')).sort().map(f=>'tests/'+f)]);
-else if(group==='browser')for(const name of ['focus-audio','boss-pause-music','prologue','epilogue','homing-jaw','encounter-speech','ravil-battle','summons','department','jump-audio','crouch'])run('tests/'+name+'.cjs');
+else if(group==='browser')for(const name of ['focus-audio','boss-pause-music','death-scene','prologue','epilogue','homing-jaw','encounter-speech','ravil-battle','summons','department','jump-audio','crouch'])run('tests/'+name+'.cjs');
 else if(group==='campaign')for(const upgrade of ['paper','homing'])run('tests/campaign.cjs',{GUROV_UPGRADE:upgrade});
 else if(group==='check'){
  for(const dir of ['game','tools','tests','desktop'])for(const file of fs.readdirSync(dir))if(/\.(js|cjs)$/.test(file))run(['--check',path.join(dir,file)]);

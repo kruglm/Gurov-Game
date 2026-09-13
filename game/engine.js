@@ -206,7 +206,12 @@
     }
     die(cause='damage',attacker=null) {
       if(this.awaitingRespawn||this.won)return;
-      const fatal={player:{...this.player},camera:this.camera,cause,source:attacker};
+      // Death presentation needs the encounter before spawn resets its actors and roof.
+      // Keep this transient snapshot in the event, never in the saved checkpoint.
+      const fatal={player:{...this.player},camera:this.camera,cause,source:attacker,scene:structuredClone({
+        level:this.level,runner:this.runner,companion:this.companion,projectiles:this.projectiles,
+        nearNpc:this.nearNpc,nearSign:this.nearSign,nearFaculty:this.nearFaculty,nearCatch:this.nearCatch,distanceOffset:this.distanceOffset
+      })};
       this.stats.deaths++;
       if(this.level.boss&&!this.level.boss.defeated){this.level.boss=levelData(this.index).boss;if(this.index===FINAL_LEVEL)this.level.boss.x=Math.max(this.level.boss.x,this.level.checkpoints[this.checkpoint].x+480);}
       // Prepare the checkpoint immediately, but do not simulate it until a choice.
