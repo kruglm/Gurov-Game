@@ -14,3 +14,4 @@ game/assets/music/*.js linguist-generated=true -diff
 game/assets/voices/*.js linguist-generated=true -diff
 game/assets/voices/manifest.js linguist-generated=false diff
 game/assets/roman-efforts-data.js linguist-generated=true -diff
+game/assets/gurov-efforts-data.js linguist-generated=true -diff

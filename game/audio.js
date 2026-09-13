@@ -21,14 +21,41 @@
     setState(state){if(this.state===state)return;this.state=state;if(['menu','outro','pause','intro'].includes(state))this.stopEfforts();if(state==='intro')this.pauseSpeech?.();if(['menu','outro','pause'].includes(state))this.stopSpeech();if(this.ctx)this.musicBus.gain.setTargetAtTime(state==='outro'?.025:state==='intro'?.045:state==='pause'?.12:.5,this.ctx.currentTime,state==='outro'?.025:.16);this.restoreMusic?.();this.update();}
     prepareEfforts(){
       this.effortBuffers=new Map();this.effortNodes=new Set();this.effortIndex={};this.effortAfter=0;
-      this.effortReady=Promise.all(Object.entries(root.GurovRomanEffortData||{}).map(async([name,data])=>{
-        try{const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));const buffer=await this.ctx.decodeAudioData(bytes.buffer);if(this.ctx.state!=='closed')this.effortBuffers.set(name,buffer);}
+      this.jumpBuffers=new Map();this.jumpNodes=new Set();this.jumpIndex={};
+      const decode=(bank,buffers)=>Object.entries(bank||{}).map(async([name,data])=>{
+        try{const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));const buffer=await this.ctx.decodeAudioData(bytes.buffer);if(this.ctx.state!=='closed')buffers.set(name,buffer);}
         catch(error){console.warn('Action sound unavailable: '+name,error);}
-      }));
+      });
+      this.effortReady=Promise.all([...decode(root.GurovRomanEffortData,this.effortBuffers),...decode(root.GurovJumpEffortData,this.jumpBuffers)]);
     }
     stopEfforts(){
+      this.stopRomanEfforts();this.stopJumpEfforts();
+    }
+    stopRomanEfforts(){
       for(const node of this.effortNodes||[])try{node.source.stop();}catch(e){}
       this.effortNodes?.clear();this.effortAfter=0;
+    }
+    stopJumpEfforts(fade=0){
+      const now=this.ctx?.currentTime||0;
+      for(const node of this.jumpNodes||[])try{
+        if(fade){node.gain.gain.setValueAtTime(node.gain.gain.value,now);node.gain.gain.linearRampToValueAtTime(0,now+fade);}
+        node.source.stop(now+fade);
+      }catch(e){}
+      this.jumpNodes?.clear();
+    }
+    jumpEffort(second=false){
+      // Player actions have their own SFX lane: no speech ownership or music ducking.
+      if(!this.enabled||this.ctx?.state!=='running'||!['play','boss'].includes(this.state))return false;
+      const kind=second?'double':'jump',index=this.jumpIndex[kind]||0;
+      const name=kind+'-'+(index%2+1),buffer=this.jumpBuffers.get(name);
+      // Never queue a delayed grunt if decoding has not finished at takeoff.
+      if(!buffer)return false;
+      this.stopJumpEfforts(.018);this.jumpIndex[kind]=index+1;
+      const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();source.buffer=buffer;
+      gain.gain.value=this.voiceActive?.28:.58;source.connect(gain);gain.connect(this.sfxBus);
+      const node={source,gain,kind,name};this.jumpNodes.add(node);this.voices.add(source);
+      source.onended=()=>{source.disconnect();gain.disconnect();this.jumpNodes.delete(node);this.voices.delete(source);};
+      source.start(this.ctx.currentTime);return true;
     }
     effort(kind){
       // Immediate one-shots on SFX: never enter the speech queue or change music gain.
@@ -39,7 +66,7 @@
       const now=this.ctx.currentTime;
       // If a sound is not decoded yet, skip it rather than playing it after the action.
       if(!buffer||(kind!=='defeat'&&(this.effortNodes.size||now<this.effortAfter)))return false;
-      this.stopEfforts();this.effortIndex[kind]=index+1;this.effortAfter=now+Math.max(.45,buffer.duration+.08);
+      this.stopRomanEfforts();this.effortIndex[kind]=index+1;this.effortAfter=now+Math.max(.45,buffer.duration+.08);
       const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();source.buffer=buffer;
       gain.gain.value=this.voiceActive?.26:.68;source.connect(gain);gain.connect(this.sfxBus);
       const node={source,gain,kind,name};this.effortNodes.add(node);this.voices.add(source);
@@ -122,7 +149,7 @@
         gain.cancelScheduledValues(now);gain.setValueAtTime(value,now);gain.setTargetAtTime(tension?.85:0,now,.3);
       }
     }
-    sfx(name){
+    sfx(name,detail={}){
       const tone=(n,d,v=.1,to=null,delay=0,type='sine')=>this.tone(n,d,type,v,delay,'sfx',to);
       if(name==='coursework'){[69,74,78,81].forEach((n,i)=>tone(n,.3,.09,null,i*.08));}
       else if(name==='ivanCaught'){[74,77,81,86].forEach((n,i)=>tone(n,.5,.1,null,i*.1));}
@@ -136,7 +163,7 @@
       else if(name==='climbThrow'){tone(53,.11,.10,37,0,'triangle');tone(78,.04,.035,67,.025,'square');}
       else if(name==='tomatoThrow'){tone(57,.14,.075,76,0,'triangle');tone(66,.06,.04,48,.07);}
       else if(name==='tomatoSplat'){tone(49,.13,.10,25);tone(71,.065,.055,38,.012,'triangle');tone(55,.11,.04,31,.045);}
-      else if(name==='jump'){tone(64,.13,.09,79);}
+      else if(name==='jump'){const voiced=this.jumpEffort(!!detail.second);tone(detail.second?69:64,.13,voiced?.025:.09,detail.second?84:79);}
       else if(name==='companionShot'){tone(79,.15,.075,86);}
       else if(name==='companionJoined'){[74,77,81,86].forEach((n,i)=>tone(n,.45,.12,null,i*.12));}
       else if(name==='dash'){tone(45,.15,.1,78,0,'triangle');}

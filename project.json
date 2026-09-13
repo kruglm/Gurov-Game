@@ -1,7 +1,7 @@
 {
   "name": "Гуров — Последний удовл",
-  "version": "2.7.0",
-  "build": "41",
+  "version": "2.7.1",
+  "build": "42",
   "bundleId": "local.gurov.lastlemma",
   "electron": {
     "version": "44.3.0",

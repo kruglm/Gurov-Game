@@ -400,7 +400,7 @@
   function formatTime(t){return Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');}
   function events(){for(const e of world.events){
     if(e.type==='save'){persist();continue;}
-    if(!bossOutro&&!['bossIntro','bossDefeated','ivanCaught'].includes(e.type)&&!(world.pendingBossOutro&&['companionJoined','complete','hit'].includes(e.type))&&!(e.type==='hurt'&&world.awaitingRespawn))sound.sfx(e.type==='enemy'&&e.owner==='roman'?'romanDefeat':({combatTell:'shield',groundSlam:'land',holdImpact:'land',bossRage:'bossShot'})[e.type]||e.type);
+    if(!bossOutro&&!['bossIntro','bossDefeated','ivanCaught'].includes(e.type)&&!(world.pendingBossOutro&&['companionJoined','complete','hit'].includes(e.type))&&!(e.type==='hurt'&&world.awaitingRespawn))sound.sfx(e.type==='enemy'&&e.owner==='roman'?'romanDefeat':({combatTell:'shield',groundSlam:'land',holdImpact:'land',bossRage:'bossShot'})[e.type]||e.type,e);
     if(e.type==='jump')burst(e.x,e.y,e.second?'#9fe2d6':'#acbfb9',7);
     if(e.type==='dash')burst(e.x,e.y+45,'#9ee6d8',16);
     if(['spark','page','tea'].includes(e.type))burst(e.x,e.y,'#f7d58a',e.type==='page'?24:8);

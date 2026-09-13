@@ -1,14 +1,18 @@
 {
   "name": "gurov-last-grade",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "private": true,
   "description": "Offline Canvas platformer: Gurov — The Last Satisfactory Grade",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "node tools/test.cjs unit",
     "test:browser": "node tools/test.cjs browser",
     "test:campaign": "node tools/test.cjs campaign",
     "check": "node tools/test.cjs check"
   },
-  "devDependencies": { "playwright": "1.57.0" }
+  "devDependencies": {
+    "playwright": "1.57.0"
+  }
 }
