@@ -5,7 +5,13 @@
     init(){
       if(!this.ctx){
         const AC=root.AudioContext||root.webkitAudioContext;if(!AC)return;
-        this.ctx=new AC();this.ctx.onstatechange=()=>{this.update();this.onChange?.();};this.master=this.ctx.createGain();this.master.gain.value=.6;
+        this.ctx=new AC();this.ctx.onstatechange=()=>{
+          // Some engines complete an earlier resume after a newer suspend.
+          // Reconcile against the current window state, not that stale request.
+          if(this.backgroundPaused&&this.ctx.state==='running')this.ctx.suspend().catch(()=>{});
+          else if(!this.backgroundPaused&&this.enabled&&this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});
+          this.update();this.onChange?.();
+        };this.master=this.ctx.createGain();this.master.gain.value=.6;
         this.musicBus=this.ctx.createGain();this.musicBus.gain.value=.5;
         this.sfxBus=this.ctx.createGain();this.sfxBus.gain.value=.8;
         const compressor=this.ctx.createDynamicsCompressor();compressor.threshold.value=-12;compressor.ratio.value=4;

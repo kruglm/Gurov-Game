@@ -20,7 +20,11 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
     queue:__sound.voiceQueue?.map(q=>q.actor+'|'+q.text)});
   });
   const url=pathToFileURL(path.resolve(process.argv[2]||'game/index.html')).href;
-  const ready=()=>page.waitForFunction(()=>gurov.state.assetReady,null,{polling:50});
+  const ready=async()=>{
+   await page.waitForFunction(()=>gurov.state.assetReady,null,{polling:50});
+   // Playwright does not guarantee the order of separate initialization scripts.
+   await page.evaluate(()=>{__autoStories=false;});
+  };
   const active=()=>page.waitForFunction(()=>__sound.voiceActive,null,{polling:25});
   async function load(save){
    await page.goto(url);await ready();
@@ -139,9 +143,11 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   // Rapid duplicated browser notifications must settle in the latest state.
   await page.evaluate(()=>{for(let i=0;i<6;i++){dispatchEvent(new Event('blur'));dispatchEvent(new Event('focus'));}dispatchEvent(new Event('blur'));});
   await page.waitForFunction(()=>__sound.ctx.state==='suspended',null,{polling:25});
-  await page.waitForTimeout(100);assert.ok(await page.evaluate(()=>gurov.state.backgroundPaused&&__sound.ctx.state==='suspended'));
-  await page.evaluate(()=>dispatchEvent(new Event('focus')));await page.waitForFunction(()=>__sound.ctx.state==='running',null,{polling:25});
-  assert.equal(await page.evaluate(()=>gurov.state.backgroundPaused),false);checks.push('rapid focus changes settle correctly');
+  await page.waitForTimeout(100);assert.deepEqual(await page.evaluate(()=>({paused:gurov.state.backgroundPaused,context:__sound.ctx.state})),{paused:true,context:'suspended'});
+  await page.evaluate(()=>{for(let i=0;i<6;i++){dispatchEvent(new Event('focus'));dispatchEvent(new Event('blur'));}dispatchEvent(new Event('focus'));});
+  await page.waitForFunction(()=>__sound.ctx.state==='running',null,{polling:25});await page.waitForTimeout(100);
+  assert.deepEqual(await page.evaluate(()=>({paused:gurov.state.backgroundPaused,context:__sound.ctx.state})),{paused:false,context:'running'});
+  checks.push('rapid focus changes settle correctly in either direction');
   assert.deepEqual(errors,[]);
   fs.mkdirSync('tests/.output',{recursive:true});fs.writeFileSync('tests/.output/focus-audio.json',JSON.stringify({checks,errors},null,2));
   console.log('PASS: '+checks.length+' background/resume cases with real offline Russian audio, unchanged sources, playlists, captions and scene clocks.');

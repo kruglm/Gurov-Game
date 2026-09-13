@@ -25,4 +25,5 @@ jobs:
         with:
           name: test-output
           path: tests/.output/
+          include-hidden-files: true
           retention-days: 7
