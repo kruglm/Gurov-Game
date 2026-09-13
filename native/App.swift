@@ -74,13 +74,20 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.window.deminiaturize(nil)
             self.window.makeKeyAndOrderFront(nil)
+            self.window.makeFirstResponder(self.webView)
             NSApp.activate(ignoringOtherApps: true)
         }
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard verifying else { return }
+        // A process launched by a test runner can finish navigation before its
+        // window becomes key. Give the real page focus before testing autoplay.
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(webView)
+        NSApp.activate(ignoringOtherApps: true)
         let script = """
         const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const windowState = () => JSON.stringify({hidden:document.hidden,focused:document.hasFocus(),paused:gurov.state.backgroundPaused,context:gurov.state.audio.context});
         const resumeAutoPause = () => {
             if (gurov.state.mode === 'modal' && document.getElementById('modal-title').textContent === 'Мысль не потеряна.') document.querySelector('#modal-actions button').click();
         };
@@ -90,7 +97,7 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         // Wait for both before checking autoplay, without a click or keypress.
         for (let i = 0; i < 100 && (gurov.state.audio.track !== 'menu' || gurov.state.audio.context !== 'running'); i++) await wait(50);
         const menuAudio = gurov.state.audio;
-        if (gurov.state.mode !== 'menu' || menuAudio.context !== 'running' || menuAudio.track !== 'menu' || menuAudio.nodes !== 1 || menuAudio.master < .5) throw Error('Menu music did not autoplay: ' + JSON.stringify(menuAudio));
+        if (gurov.state.mode !== 'menu' || menuAudio.context !== 'running' || menuAudio.track !== 'menu' || menuAudio.nodes !== 1 || menuAudio.master < .5) throw Error('Menu music did not autoplay: ' + JSON.stringify(menuAudio) + ' Window: ' + windowState());
         await wait(200);
         if (gurov.state.audio.time <= menuAudio.time) throw Error('Menu audio clock is stopped');
         document.getElementById('start').click();
@@ -107,10 +114,15 @@ final class GameDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         }, {once:true});
         webkit.messageHandlers.verifyMinimize.postMessage('minimize');
         for (let i = 0; i < 100 && !restored; i++) await wait(50);
-        if (!blurred || !restored?.sameJob || !restored?.sameSource || !restored?.resumed || restored.audioElapsed > .12) throw Error('Native minimize lost narration: ' + JSON.stringify({blurred,restored}));
+        if (!blurred || !restored?.sameJob || !restored?.sameSource || restored.audioElapsed > .12) throw Error('Native minimize lost narration: ' + JSON.stringify({blurred,restored}));
+        // macOS can focus the window before its restore animation makes the
+        // WebView visible. Speech should remain frozen until that animation ends.
+        for (let i = 0; i < 100 && (document.hidden || !document.hasFocus() || gurov.state.backgroundPaused || heldSound.ctx.state !== 'running'); i++) await wait(50);
+        if (document.hidden || !document.hasFocus() || gurov.state.backgroundPaused || heldSound.ctx.state !== 'running') throw Error('Test window did not finish restoring: ' + windowState());
+        restored.resumed = true;
         const resumedTime = heldSound.ctx.currentTime;
         await wait(200);
-        if (heldSound.ctx.currentTime <= resumedTime) throw Error('Narration stayed suspended after restoring window');
+        if (heldSound.ctx.currentTime <= resumedTime) throw Error('Narration stayed suspended after restoring window: ' + windowState());
         const focusResume = {blurred, ...restored};
         document.querySelector('#modal-actions button').click();
         await wait(400);
