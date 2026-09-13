@@ -31,3 +31,37 @@ test('exhaustion stops Ivan\'s old taunt and preserves the new surrender prompt'
  boss.hp=0;boss.exhausted=true;boss.speech='Всё, запыхался... Только один вопрос!';boss.speechTime=8;
  d.update(w,'play');assert.equal(s.voiceJob,null);assert.equal(d.current,null);assert.equal(boss.speechTime,8);assert.equal(boss.speech,'Всё, запыхался... Только один вопрос!');
 });
+function fight(){
+ const {s,d}=setup(),w=new(require('../game/engine').World)(3);w.level.boss.active=true;
+ w.player.x=w.level.boss.x-300;w.companion.x=w.player.x-105;w.companion.speechTime=0;
+ return {s,d,w,boss:w.level.boss,c:w.companion};
+}
+test('a single reserved Ravil reply waits for Ivan and the audio gap, with no premature caption or line consumption',()=>{
+ const {s,d,w,boss,c}=fight();
+ d.say(w,'ivan',boss,'Догоните сначала!');s.voiceActive=true;
+ for(let i=0;i<20;i++)d.replyToIvan(w);
+ d.update(w,'play');assert.equal(s.voiceJob.actor,'ivan');assert.equal(c.speechTime,0);assert.equal(c.battleLines,undefined);
+ s.stopSpeech();s.ambientVoiceAfter=2;s.ctx.currentTime=1;
+ d.update(w,'play');assert.ok(d.reply);assert.equal(s.voiceJob,null);
+ s.ctx.currentTime=2;d.say(w,'ivan',boss,'Ещё одна насмешка');d.update(w,'play');
+ assert.equal(s.voiceJob.actor,'ravil');assert.equal(c.battleLines.normal,1);assert.equal(c.speechTime,0);
+ s.voiceActive=true;d.update(w,'play');assert.equal(c.speech,s.voiceJob.text);assert.ok(c.speechTime>0);assert.equal(boss.speechTime,0);
+ d.replyToIvan(w);assert.equal(d.reply,null,'do not reserve another reply during Ravil\'s own line');assert.equal(s.voiceQueue.length,0);
+});
+test('academic announcement precedes a reserved reply, selected from the new phase after the entrance',()=>{
+ const {s,d,w,boss,c}=fight();
+ d.say(w,'ivan',boss,'Догоните сначала!');d.replyToIvan(w);w.beginAcademicPhase();d.defer(w,'ivan',boss,boss.speech);
+ s.stopSpeech();d.update(w,'play');assert.equal(s.voiceJob,null);assert.equal(c.battleLines,undefined);
+ w.intro=null;d.update(w,'play');assert.equal(s.voiceJob.text,'Я ухожу в академический отпуск!');assert.equal(c.battleLines,undefined);
+ s.stopSpeech();d.update(w,'play');assert.equal(s.voiceJob.actor,'ravil');assert.match(s.voiceJob.text,/Академический отпуск/);assert.equal(c.battleLines.normal,0);assert.equal(c.battleLines.academic,1);
+});
+test('pending and playing algebra threats stop on exhaustion, death, checkpoint reset, modal or level change',()=>{
+ for(const active of [false,true])for(const end of ['exhausted','death','respawn','modal','world']){
+  const {s,d,w,boss,c}=fight();d.replyToIvan(w);if(active){d.update(w,'play');s.voiceActive=true;d.update(w,'play');}
+  if(end==='exhausted')boss.exhausted=true;
+  if(end==='death')w.awaitingRespawn=true;
+  if(end==='respawn')w.player={...w.player};
+  d.update(end==='world'?new(require('../game/engine').World)(2):w,end==='modal'?'modal':'play');
+  assert.equal(d.reply,null,end);assert.equal(d.current,null,end);assert.ok(!s.voiceJob,end);assert.equal(c.speechTime,0,end);
+ }
+});

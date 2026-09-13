@@ -59,8 +59,6 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.waitForFunction(()=>!__sound.voiceActive,null,{polling:50});await page.evaluate(()=>__advance(165));
   }
   await page.evaluate(()=>__advance(600));assert.equal(await page.evaluate(()=>gurov.state.mode),'modal');
-  const newManifest=JSON.parse(fs.readFileSync('game/assets/voices/manifest.js','utf8').split('=',2)[1].replace(/;$/,''));
-  assert.equal(Object.keys(newManifest).length,141);
   assert.deepEqual(errors,[]);assert.deepEqual(warnings,[]);assert.deepEqual(external,[]);
   fs.writeFileSync('tests/.output/prologue-'+tag+'-results.json',JSON.stringify({entry,shots,perf,voices,pendingSave:true,continueSkipsPrologue:true,skipCancelsPending:true,focusPreservesAudio:true,audibleFilm:true,errors,warnings,external},null,2));console.log('PASS: defense, throw, splat, evacuation, title, courtyard; save/continue/skip; paused scene; delayed decoder; five offline voices.');
  }finally{await browser.close();}

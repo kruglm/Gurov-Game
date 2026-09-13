@@ -7,6 +7,7 @@ const rows=[],add=(actor,text)=>{if(text)rows.push({actor,text});};
 Object.values(root.GurovStory).flat().forEach(f=>add(f.actor,f.text));root.GurovEpilogueLines.forEach(f=>add(f.actor,f.text));
 require('../game/prologue-lines.js').forEach(f=>add(f.actor,f.text));
 root.GurovEngine.ROMAN_LINES.forEach(t=>add('roman',t));root.GurovEngine.RAVIL_LINES.forEach(t=>add('ravil',t));
+Object.values(root.GurovEngine.RAVIL_BATTLE_LINES).flat().forEach(t=>add('ravil',t));
 require('../game/faculty-data.js').forEach(n=>n.lines.forEach(t=>add(n.id,t)));
 root.GurovEngine.CHAPTERS.forEach((c,i)=>{add('narrator',c.intro);add(i===2?'maisuradze':'gurov',c.quote);});
 

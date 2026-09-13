@@ -447,7 +447,7 @@
     if(e.type==='ivanHeal'){burst(e.x,e.y,'#a3edb0',12);toast('Иван восстановил 2 здоровья. Не давайте ему оторваться!',3);}
     if(e.type==='bossSpeech')ambientSpeech.say(world,world.level.boss.kind,world.level.boss,e.speech,2);
     if(e.type==='romanSpeech')ambientSpeech.say(world,'roman',world.level.enemies.find(n=>n.speech===e.speech&&n.speechTime>0),e.speech);
-    if(e.type==='companionSpeech')ambientSpeech.say(world,'ravil',world.companion,e.speech);
+    if(e.type==='companionSpeech'){if(e.combat)ambientSpeech.replyToIvan(world);else ambientSpeech.say(world,'ravil',world.companion,e.speech);}
     if(e.type==='runnerSpeech')ambientSpeech.say(world,'ivan',world.runner,e.speech);
     if(e.type==='facultySpeech')sound.speak(e.id,e.speech,2);
     if(e.type==='cameo')sound.speak('sasha','Профессор! Заберите курсовую!',2);

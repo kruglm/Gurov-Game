@@ -29,6 +29,20 @@
   ];
   const ROMAN_LINES=['Я поднял MCP-сервер. Почти прод!', 'Это не коридор, это B2B-проект.', 'Сейчас целиком напишу статью с Claude Code!', 'Я потратил триллион токенов. Это только введение.', 'Claude Code, ещё триллион — и статья готова!', 'MCP-сервер пишет статью, я руковожу B2B.', 'Claude Code уже всё за меня написал.', 'Сначала созвон, потом погоня.', 'Я завернул это в MCP-сервер.', 'Гуров, давайте обсудим unit-экономику.'];
   const RAVIL_LINES=['Гуров, я вас люблю!', 'Хочу только вас, профессор.', 'Моя любимая лемма — это вы.', 'Я хочу быть рядом с вами, Гуров.', 'Я прикрою вас. Вы мне очень дороги.', 'Спасибо, что вытащили меня от Эрика!', 'Теперь никакой клетки. Только тропическая алгебра!', 'Сергей Исаевич, вы мой любимый базис.', 'Ради вас я даже доказательство перепишу.', 'Моё сердце работает над тропическим полукольцом.', 'Гуров, можно после погони остаться с вами?', 'Я хочу вас обнять. Но сначала поймаем Ивана!', 'Ваша челюсть убедительнее любого контрпримера.', 'Эрик всё согласовал. Кроме моего освобождения.', 'Профессор, я принёс конспект и всю свою любовь.', 'Вы бежите — я прикрываю. Идеальная пара!', 'Все хотят чаю. А я хочу к вам на семинар.', 'Павленко не скроется от нашей леммы!', 'Тропическая алгебра подождёт. Вы важнее.', 'Ни один помидор не разрушит наше доказательство.'];
+  const RAVIL_BATTLE_LINES={
+    normal:[
+      'Иван, сейчас разложу тебя по базису!',
+      'Ещё один помидор — получишь сто задач по алгебре!',
+      'Иван, загоню тебя в тропическое полукольцо!',
+      'Не сдашься — докажешь каждую лемму лично!',
+      'От прикладной алгебры ты не убежишь!'
+    ],
+    academic:[
+      'Академический отпуск? Алгебра тебя и там найдёт!',
+      'Строй свои стенки! Разберём их по базису!',
+      'Глаза горят? Сейчас остудим теоремой!'
+    ]
+  };
   function migrateSave(saved){
     if(!saved||typeof saved!=='object'||Array.isArray(saved))return null;
     const stats=value=>Object.fromEntries(['sparks','diplomas','defeats','deaths','elapsed'].map(key=>{
@@ -385,13 +399,26 @@
     unlockCompanion(){
       this.level.captive=null;if(this.companionUnlocked)return;this.companionUnlocked=true;this.spawnCompanion();this.emit('companionJoined',{x:this.companion.x,y:this.companion.y});
     }
+    companionBattleLine(){
+      const c=this.companion,b=this.level.boss;
+      if(!c||b?.kind!=='ivan'||!b.active||b.defeated||b.exhausted||this.intro)return null;
+      const phase=b.academic?'academic':'normal';c.battleLines??={normal:0,academic:0};
+      c.speechCool=9;
+      return RAVIL_BATTLE_LINES[phase][c.battleLines[phase]++%RAVIL_BATTLE_LINES[phase].length];
+    }
     updateCompanion(dt){
       const c=this.companion,p=this.player;if(!c)return;
       const target=this.companionTarget();
       if(Math.abs(p.x-c.x)>650||c.y>880){c.x=target;c.y=p.y+p.h-c.h;c.vx=0;c.vy=0;c.grounded=false;}
       const dx=target-c.x;
       c.cast=Math.max(0,c.cast-dt);c.cool=Math.max(0,c.cool-dt);c.speechTime=Math.max(0,c.speechTime-dt);c.speechCool-=dt;c.affection=Math.max(0,c.affection-dt);
-      if(c.speechCool<=0&&Math.abs(p.x-c.x)<320){c.speech=RAVIL_LINES[c.lineIndex++%RAVIL_LINES.length];c.speechTime=4;c.speechCool=6.5;c.affection=2;this.emit('companionSpeech',{speech:c.speech});}
+      if(c.speechCool<=0&&Math.abs(p.x-c.x)<320){
+        const boss=this.level.boss;
+        if(boss?.kind==='ivan'){
+          // Reserve a reply, choosing its phase and text only when audio is free.
+          if(boss.active&&!boss.defeated&&!boss.exhausted&&!this.intro){c.speechCool=9;this.emit('companionSpeech',{combat:true});}
+        }else{c.speech=RAVIL_LINES[c.lineIndex++%RAVIL_LINES.length];c.speechTime=4;c.speechCool=6.5;c.affection=2;this.emit('companionSpeech',{speech:c.speech});}
+      }
       c.vx+=(clamp(dx*4,-350,350)-c.vx)*Math.min(1,dt*8);
       if(Math.abs(c.vx)>15)c.facing=Math.sign(c.vx);
       const ahead=c.x+c.w/2+Math.sign(dx)*42;
@@ -571,6 +598,6 @@
     bossOpen(){const b=this.level.boss;return !!b&&b.active&&!b.defeated&&!b.exhausted&&(b.kind==='ivan'||b.timer%6>=1.15);}
 
   }
-  const api={World,levelData,CHAPTERS,ROMAN_LINES,RAVIL_LINES,FINAL_LEVEL,CAMPAIGN,COMBAT,UPGRADES,migrateSave,W,H,PLAYER_W,PLAYER_H,PLAYER_ART_H,clamp,overlap,lisp};
+  const api={World,levelData,CHAPTERS,ROMAN_LINES,RAVIL_LINES,RAVIL_BATTLE_LINES,FINAL_LEVEL,CAMPAIGN,COMBAT,UPGRADES,migrateSave,W,H,PLAYER_W,PLAYER_H,PLAYER_ART_H,clamp,overlap,lisp};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GurovEngine=api;
 })(typeof window!=='undefined'?window:globalThis);
