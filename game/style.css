@@ -82,6 +82,7 @@
 #death-screen{--death-accent:#eac988;--death-quote:#e3c5a7;--death-glow:#543437;--death-middle:#26232d;background:radial-gradient(ellipse at 28% 48%,var(--death-glow) 0,var(--death-middle) 36%,#111c2a 72%)}
 #death-screen[data-theme=erik]{--death-accent:#b5dfbd;--death-quote:#c9e2be;--death-glow:#335949;--death-middle:#20342f}
 #death-screen[data-theme=ivan]{--death-accent:#f1b4a3;--death-quote:#edc9bb;--death-glow:#713b3d;--death-middle:#352733}
+#death-screen[data-theme=ivan][data-phase=academic]{--death-accent:#ffbd7f;--death-quote:#f8d1ab;--death-glow:#873e29;--death-middle:#3c243b}
 #death-screen[data-theme=roman]{--death-accent:#dece9b;--death-quote:#d8d3b5;--death-glow:#494d3b;--death-middle:#232f37}
 #death-screen[data-theme=fall]{--death-accent:#bed3e8;--death-quote:#c3d8e8;--death-glow:#344f6b;--death-middle:#243047}
 #death-screen .eyebrow{color:var(--death-accent)}#death-screen .primary{background:var(--death-accent)}#death-screen .primary:hover{filter:brightness(1.08)}

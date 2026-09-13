@@ -168,6 +168,7 @@
       this.awaitingRespawn=!!(restoring&&saved.awaitingRespawn&&!this.won);
       this.deathCause=this.awaitingRespawn?(saved.deathCause==='fall'?'fall':'damage'):null;
       this.deathSource=this.deathCause==='damage'&&['roman','erik','ivan'].includes(saved?.deathSource)?saved.deathSource:null;
+      this.deathBossPhase=this.deathSource==='ivan'?(saved?.deathBossPhase==='academic'?'academic':'normal'):null;
       this.spawn();
       if(saved?.level===index&&saved.chapterComplete&&index<FINAL_LEVEL&&this.pages>=(this.level.requiredPages??3)&&(!this.level.boss||this.level.boss.defeated))this.won=true;
     }
@@ -182,7 +183,7 @@
       if(this.level.endless){this.distanceOffset=0;this.roofChunk=null;this.updateRoof();}
     }
     emit(type,data={}) { this.events.push({type,...data}); }
-    save() { return {version:1,campaign:CAMPAIGN,upgrade:this.upgrade,paperCooldown:this.paperCooldown,pendingUpgrade:this.pendingUpgrade,chapterComplete:this.won&&this.index<FINAL_LEVEL,pendingScene:this.pendingScene,pendingBossOutro:this.pendingBossOutro,awaitingRespawn:this.awaitingRespawn,deathCause:this.deathCause,deathSource:this.deathSource,chapterStart:{...this.chapterStart,stats:{...this.chapterStart.stats}},courseworkObtained:this.courseworkObtained,companionUnlocked:this.companionUnlocked,cameoHelped:!!this.level.npc?.helped,level:this.index,checkpoint:this.checkpoint,taken:this.level.items.filter(i=>i.taken).map(i=>i.id),stats:{...this.stats},bossDefeated:!!this.level.boss?.defeated}; }
+    save() { return {version:1,campaign:CAMPAIGN,upgrade:this.upgrade,paperCooldown:this.paperCooldown,pendingUpgrade:this.pendingUpgrade,chapterComplete:this.won&&this.index<FINAL_LEVEL,pendingScene:this.pendingScene,pendingBossOutro:this.pendingBossOutro,awaitingRespawn:this.awaitingRespawn,deathCause:this.deathCause,deathSource:this.deathSource,deathBossPhase:this.deathBossPhase,chapterStart:{...this.chapterStart,stats:{...this.chapterStart.stats}},courseworkObtained:this.courseworkObtained,companionUnlocked:this.companionUnlocked,cameoHelped:!!this.level.npc?.helped,level:this.index,checkpoint:this.checkpoint,taken:this.level.items.filter(i=>i.taken).map(i=>i.id),stats:{...this.stats},bossDefeated:!!this.level.boss?.defeated}; }
     chooseUpgrade(kind){if(this.upgrade||!this.pendingUpgrade||!['homing','paper'].includes(kind))return false;this.upgrade=kind;this.pendingUpgrade=false;this.emit('save');return true;}
     heal(amount,source){const p=this.player,restored=Math.min(5-p.hp,Math.max(0,amount));if(restored<=0||this.awaitingRespawn)return 0;p.hp+=restored;p.healFlash=2;this.emit('heal',{x:p.x+p.w/2,y:p.y+52,amount:restored,source});return restored;}
     canStand(){const p=this.player,standing={...p,y:p.y+p.h-PLAYER_H,h:PLAYER_H};return ![...this.level.platforms.filter(q=>q.kind==='floor'),...(this.level.boss?.walls||[]).filter(q=>q.hp>0)].some(q=>overlap(standing,q));}
@@ -193,7 +194,7 @@
     }
     eatPaper(){const p=this.player;if(this.upgrade!=='paper'||this.paperCooldown>0||p.eating>0||p.hp>=5||!p.grounded||p.dash>0||this.won||this.awaitingRespawn||this.intro||!this.canStand())return false;this.setCrouch(0);p.eating=UPGRADES.paperDuration;p.cast=0;this.paperCooldown=UPGRADES.paperCooldown;this.emit('paperEat');this.emit('save');return true;}
     cancelEating(){if(this.player.eating<=0)return;this.player.eating=0;this.emit('paperInterrupted');}
-    resumeCheckpoint(){if(!this.awaitingRespawn)return false;this.awaitingRespawn=false;this.deathCause=null;this.deathSource=null;this.player.healFlash=2;this.emit('heal',{x:this.player.x+this.player.w/2,y:this.player.y+52,amount:5,source:'respawn'});this.emit('respawn');this.emit('save');return true;}
+    resumeCheckpoint(){if(!this.awaitingRespawn)return false;this.awaitingRespawn=false;this.deathCause=null;this.deathSource=null;this.deathBossPhase=null;this.player.healFlash=2;this.emit('heal',{x:this.player.x+this.player.w/2,y:this.player.y+52,amount:5,source:'respawn'});this.emit('respawn');this.emit('save');return true;}
     restartLevel(){return new World(this.index,{upgrade:this.upgrade,paperCooldown:this.paperCooldown,stats:{...this.chapterStart.stats,deaths:this.stats.deaths,elapsed:this.stats.elapsed},courseworkObtained:this.chapterStart.courseworkObtained,companionUnlocked:this.chapterStart.companionUnlocked});}
     acknowledgeBossOutro(){this.pendingBossOutro=null;this.emit('save');}
     acknowledgeScene(kind){if(this.pendingScene===kind){this.pendingScene=null;this.pendingBossOutro=null;this.emit('save');}}
@@ -217,6 +218,8 @@
       // Prepare the checkpoint immediately, but do not simulate it until a choice.
       this.spawn();this.projectiles=[];this.awaitingRespawn=true;this.deathCause=cause==='fall'?'fall':'damage';
       this.deathSource=this.deathCause==='damage'&&['roman','erik','ivan'].includes(attacker)?attacker:null;
+      // The retry boss is back in phase one; the victory portrait belongs to the fatal encounter.
+      this.deathBossPhase=this.deathSource==='ivan'?(fatal.scene.level.boss?.academic?'academic':'normal'):null;
       this.emit('death',fatal);this.emit('save');
     }
     enemyShot(owner,type,x,y,vx,vy,w=28,h=24,extra={}){

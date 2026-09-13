@@ -27,7 +27,9 @@
         "ivan": "assets/portraits/ivan-v1.6.png",
         "maisuradze-blush": "assets/portraits/maisuradze-blush-v1.7.png",
         "maisuradze": "assets/portraits/maisuradze-v1.7.png",
-        "sasha": "assets/portraits/sasha-v1.6.2.png"
+        "sasha": "assets/portraits/sasha-v1.6.2.png",
+        "ivan-mocking": "assets/portraits/ivan-mocking-v2.8.6.png",
+        "ivan-academic-mocking": "assets/portraits/ivan-academic-mocking-v2.8.6.png"
       },
       "faculty": {
         "alekseev": "assets/faculty-actions/alekseev-v2.2.png",

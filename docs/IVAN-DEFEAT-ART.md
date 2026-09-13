@@ -1,0 +1,16 @@
+# Портреты победившего Ивана · 2.8.6
+
+Созданы встроенным инструментом `image_gen` как варианты существующих игровых портретов. Исходные фотографии не использовались в этой итерации. Готовые PNG подключены через `game/assets/art-manifest.json`.
+
+- Обычная фаза: `game/assets/portraits/ivan-mocking-v2.8.6.png`.
+- Академический отпуск: `game/assets/portraits/ivan-academic-mocking-v2.8.6.png`.
+
+Эмоция обеих картинок — злорадство после победы над игроком. Это отдельные портреты экрана поражения, не замена изображений в диалогах или вступлении к бою.
+
+## Запрос для обычной фазы
+
+Use case: identity-preserve. Asset type: high-resolution painted portrait for a game's defeat menu, NORMAL FIRST PHASE villain. Image 1 is the edit target and identity reference: Ivan, a young adult man with tousled curly dark brown hair, rectangular black glasses, pink T-shirt. Image 2 is style and mood reference only: Erik's mocking victory portrait. Make a NEW portrait of IVAN, NOT Erik. Preserve Ivan's recognisable facial structure, glasses, hair, natural human brown eyes, pink T-shirt and the detailed hand-painted semi-realistic illustration style. Change his friendly embarrassed expression into clearly malicious triumphant mockery: knitted lowered brows, narrowed contemptuous eyes looking directly at the viewer, asymmetrical cruel grin showing a small line of teeth, chin slightly lowered. This is him gloating after beating the player, not smiling happily or shyly. Confident shoulders, arms folded low. Remove the hand behind his head and blue folder. Chest-up composition, full hair inside frame, face occupies upper-central half and is readable when the top square is displayed. Dark muted teal rooftop-at-night backdrop consistent with this game; warm subtle face lighting. Portrait aspect 4:5, preferably 1024x1280 or similar high resolution. No text, no watermarks, no horns, no flames, no glowing eyes in this first phase. Only one character.
+
+## Запрос для академического отпуска
+
+Use case: identity-preserve. Asset type: separate high-resolution defeat-menu portrait, IVAN SECOND PHASE 'ACADEMIC LEAVE'. Image 1 is the edit target: Ivan's newly drawn first-phase mocking portrait. Image 2 is the reference for his second-phase fiery transformation, not the target composition. Preserve image 1's exact recognizable face, curly dark-brown hair, black rectangular glasses, pink shirt, arms-crossed pose, framing and detailed painted illustration style. Transform him into a more furious, maliciously victorious second-phase Ivan: fiercely pinched brows, narrowed blazing amber-orange eyes visible clearly through his unchanged glasses, contemptuous asymmetrical toothy sneer. He is gloating at the defeated player, not smiling kindly, not scared. Add small tongues of orange flame at the outer corners of the eyes, fiery orange rim light outlining his curls and shoulders, sparse ascending embers, faint dark violet haze over the same nighttime rooftop. Keep human facial anatomy, likeness and pink clothing; only mild demonic mood, NO horns, NO fangs, NO monster skin, NO excessive flames obscuring the face. The two phases must be unmistakably distinguishable even at small UI size. Face fills the upper-central portion, full curls stay inside the frame with a little top margin. One adult character, portrait 4:5, high resolution, no text, no watermarks.

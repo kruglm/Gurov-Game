@@ -44,3 +44,20 @@ test('roof reset does not erase academic Ivan, his walls, minions or companion f
  assert.deepEqual(s.level.enemies,before.enemies);assert.deepEqual(s.companion,before.companion);assert.equal(s.distanceOffset,before.distance);
  assert.equal(w.level.boss.academic,false);assert.equal(w.level.enemies.length,0);assert.equal(w.distanceOffset,0);
 });
+test('Ivan defeat portrait retains the fatal phase across save/load, then clears on retry',()=>{
+ for(const academic of [false,true]){
+  const w=new World(3,{upgrade:'homing'});w.level.boss.academic=academic;w.die('damage','ivan');
+  const phase=academic?'academic':'normal';
+  assert.equal(w.level.boss.academic,false);assert.equal(w.deathBossPhase,phase);
+  const restored=new World(3,w.save());assert.equal(restored.deathBossPhase,phase);
+  assert.equal(restored.resumeCheckpoint(),true);assert.equal(restored.deathBossPhase,null);
+  assert.equal(new World(3,restored.save()).deathBossPhase,null);
+ }
+ const legacy=new World(3,{version:1,campaign:3,level:3,awaitingRespawn:true,deathCause:'damage',deathSource:'ivan'});
+ assert.equal(legacy.deathBossPhase,'normal');
+ const invalid=new World(3,{...legacy.save(),deathBossPhase:'unknown'});assert.equal(invalid.deathBossPhase,'normal');
+ for(const [cause,source] of [['fall',null],['damage','roman']]){
+  const w=new World(3,{upgrade:'homing'});w.level.boss.academic=true;w.die(cause,source);
+  assert.equal(w.deathBossPhase,null);assert.equal(new World(3,w.save()).deathBossPhase,null);
+ }
+});

@@ -9,8 +9,9 @@
   const random=(n)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
   let upgradeChoice=null,renderPrevious=null,backgroundPaused=document.hidden;
   const DEATH_THEMES={
-    erik:{actor:'erik',pose:14,title:'Попытка\nсогласована.',cause:'Эрик оказался убедительнее. Пока что.',quote:'«Сейчас мы и тебя согласуем, Гурочка».',caption:'ЭРИК ИЛЬЯСОВ · ВСЁ СОГЛАСОВАНО',mark:'✓'},
-    ivan:{actor:'ivan',pose:12,title:'Защита\nотложена.',cause:'Иван прервал погоню и снова убежал вперёд.',quote:'«Ловите помидор! А меня — в следующий раз».',caption:'ИВАН ПАВЛЕНКО · СНОВА ВПЕРЕДИ',mark:'→'},
+    erik:{actor:'erik',portrait:'erik-mocking',pose:14,title:'Попытка\nсогласована.',cause:'Эрик оказался убедительнее. Пока что.',quote:'«Сейчас мы и тебя согласуем, Гурочка».',caption:'ЭРИК ИЛЬЯСОВ · ВСЁ СОГЛАСОВАНО',mark:'✓'},
+    ivan:{actor:'ivan',portrait:'ivan-mocking',pose:12,title:'Защита\nотложена.',cause:'Иван прервал погоню и снова убежал вперёд.',quote:'«Ловите помидор! А меня — в следующий раз».',caption:'ИВАН ПАВЛЕНКО · СНОВА ВПЕРЕДИ',mark:'→'},
+    'ivan-academic':{actor:'ivan',portrait:'ivan-academic-mocking',title:'Ушёл\nв академ.',cause:'Иван в академическом отпуске остановил погоню.',quote:'«Я в академе, профессор. А вы — на пересдаче!»',caption:'ИВАН ПАВЛЕНКО · В АКАДЕМИЧЕСКОМ ОТПУСКЕ',mark:'Ⅱ'},
     roman:{actor:'roman',pose:15,title:'Контекст\nисчерпан.',cause:'Роман завершил эту попытку раньше статьи.',quote:'«Триллион токенов — и Гуров готов. Статью допишет Claude Code».',caption:'РОМАН АКРАМОВ · MCP / B2B / CLAUDE CODE',mark:'</>'},
     fall:{actor:'gurov',pose:13,title:'Гравитация\nдоказана.',cause:'На этот раз прыжок не сошёлся.',quote:lisp('«В следующий раз начнём с двойного прыжка».'),caption:'ГУРОВ · ЕЩЁ ОДИН ПРЫЖОК ДО ДОКАЗАТЕЛЬСТВА',mark:'↓'},
     damage:{actor:'gurov',pose:13,title:'Доказательство\nпрервано.',cause:'У профессора закончились силы.',quote:lisp('«Это ещё не конец доказательства. Начнём ещё раз».'),caption:'ПОСЛЕДНИЙ УДОВЛ ЕЩЁ ВПЕРЕДИ',mark:'∴'}
@@ -144,7 +145,7 @@
   function clearDeath(){deathScreen=null;playerDeath=null;deathBackground=null;$('death-screen').classList.add('hidden');keys.clear();pressed.clear();released.clear();}
   function drawDeath(){
     if(!deathScreen||deathScreen.drawn||!cast.ready||!GurovActing.ready)return;
-    const theme=deathScreen.theme,art=DEATH_THEMES[theme];
+    const theme=deathScreen.theme,art=DEATH_THEMES[deathScreen.art];
     const c=$('death-portrait').getContext('2d');c.clearRect(0,0,460,460);c.imageSmoothingEnabled=true;
     if(theme==='erik'){
       c.fillStyle='#41695844';c.beginPath();c.moveTo(23,370);c.lineTo(86,89);c.lineTo(302,44);c.lineTo(429,376);c.closePath();c.fill();
@@ -165,13 +166,12 @@
     }
     c.fillStyle='#070c1366';c.beginPath();c.ellipse(235,387,141,15,0,0,Math.PI*2);c.fill();
     if(art.actor==='gurov')GurovItems.draw(c,'diploma',115,383,55,64,-.23);
-    if(theme==='erik'){
-      const im=GurovIllustrations.portraits['erik-mocking'];if(!im?.width)return;
+    if(art.portrait){
+      const im=GurovIllustrations.portraits[art.portrait];if(!im?.naturalWidth)return;
       const scale=460/im.width;c.drawImage(im,0,0,460,im.height*scale);
       const shade=c.createLinearGradient(0,350,0,460);shade.addColorStop(0,'#09141c00');shade.addColorStop(1,'#09141c');c.fillStyle=shade;c.fillRect(0,350,460,110);
     }else cast.draw(c,art.actor,art.pose,251,382,320,1);
     if(art.actor==='gurov')drawGurovJaw(c,352,389,1.35,0,.12);
-    if(theme==='ivan')GurovItems.draw(c,'tomato',138,392,48,48,.15);
     deathScreen.drawn=true;
   }
   function beginPlayerDeath(fatal){
@@ -191,14 +191,15 @@
     if(deathScreen)return;
     mode='dead';story=null;modalClose=null;accum=0;shake=0;effects.length=0;
     keys.clear();pressed.clear();released.clear();sound.setState('pause');
-    const theme=world.deathCause==='fall'?'fall':world.deathSource||'damage',art=DEATH_THEMES[theme];
-    deathScreen={elapsed:0,ready:false,drawn:false,theme};
+    const theme=world.deathCause==='fall'?'fall':world.deathSource||'damage';
+    const phase=theme==='ivan'?world.deathBossPhase||'normal':null,key=theme==='ivan'&&phase==='academic'?'ivan-academic':theme,art=DEATH_THEMES[key];
+    deathScreen={elapsed:0,ready:false,drawn:false,theme,phase,art:key,portrait:art.portrait||null};
     ['menu','modal','hud'].forEach(id=>$(id).classList.add('hidden'));
     $('death-attempt').textContent=`/ ПОПЫТКА ${world.stats.deaths}`;
-    $('death-screen').dataset.theme=theme;$('death-title').textContent=art.title;
+    $('death-screen').dataset.theme=theme;$('death-screen').dataset.phase=phase||'';$('death-title').textContent=art.title;
     $('death-cause').textContent=art.cause;$('death-quote').textContent=art.quote;
     $('death-art-caption').textContent=art.caption;$('death-mark').textContent=art.mark;
-    $('death-portrait').setAttribute('aria-label',art.actor==='gurov'?'Гуров собирается с силами для новой попытки':`Победитель: ${art.caption.split(' · ')[0]}`);
+    $('death-portrait').setAttribute('aria-label',art.actor==='gurov'?'Гуров собирается с силами для новой попытки':`Победитель: ${art.caption}${art.portrait?' — злорадная ухмылка':''}`);
     $('death-chapter').textContent=`ГЛАВА 0${world.index+1} / ${CHAPTERS[world.index].name.toUpperCase()}`;
     $('death-checkpoint-note').textContent=`${world.checkpoint?'Последняя зажжённая лампа.':'Лампа у входа в главу.'} Предметы и сюжетный прогресс сохранятся.`;
     document.querySelectorAll('.death-actions button').forEach(el=>el.disabled=true);
