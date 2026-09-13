@@ -38,8 +38,8 @@ test('rockets damage real opponents but do not bypass a closed Erik shield or ea
  const make=()=>{const w=new World(1,{upgrade:'homing'});w.level.enemies=[];w.level.items=[];w.runner=null;w.companion=null;const b=w.level.boss;b.active=true;b.timer=.2;w.player.x=2300;w.player.y=610-PLAYER_H;return w;};
  const put=(w,x,y)=>w.projectiles.push({type:'jaw',homing:true,x,y,w:26,h:18,vx:620,vy:0,life:1,age:0,bounces:0,enemy:false});
  const w=make(),b=w.level.boss,hp=b.hp;put(w,b.x+5,b.y+42);tick(w,1);assert.equal(b.hp,hp);assert.equal(w.projectiles.filter(s=>!s.enemy).length,0);
- b.timer=2.1;put(w,b.x+5,b.y+42);tick(w,1);assert.equal(b.hp,hp-1);
- const q=make();q.level.boss.walls=[{x:2410,y:470,w:52,h:140,hp:2,life:5}];put(q,2408,510);tick(q,1);assert.equal(q.level.boss.walls[0].hp,1);assert.equal(q.projectiles.filter(s=>!s.enemy).length,0);
+ b.timer=2.1;put(w,b.x+5,b.y+42);tick(w,1);assert.equal(b.hp,hp-.5);
+ const q=make();q.level.boss.walls=[{x:2410,y:470,w:52,h:140,hp:2,life:5}];put(q,2408,510);tick(q,1);assert.equal(q.level.boss.walls[0].hp,1.5);assert.equal(q.projectiles.filter(s=>!s.enemy).length,0);
 });
 test('render interpolation is continuous at 60/90/144 Hz and never mutates simulation or saves',()=>{
  const window={};vm.runInNewContext(fs.readFileSync('game/upgrades.js','utf8'),{window});

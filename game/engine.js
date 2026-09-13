@@ -4,8 +4,8 @@
   const W = 1280, H = 720, PLAYER_W = 54, PLAYER_H = 123, PLAYER_ART_H = 146;
   const CROUCH={height:72,speed:110,duration:.12,mouthHeight:52};
   const FINAL_LEVEL=3,CAMPAIGN=3;
-  const UPGRADES=Object.freeze({paperHeal:2,paperDuration:1.2,paperCooldown:20,lowHealth:2,homingRange:760,homingSpeed:620,homingTurn:5.5});
-  const COMBAT=Object.freeze({hit:2,heavy:3,romanHP:3,erikHP:30,ivanHP:36,maxHostile:32,romanTell:.65,romanRushSpeed:365,romanRushTime:.42,romanRecovery:.85,ivanCycle:2.5,ivanWallTell:.9,ivanWallLife:5,ivanWallHP:2,ivanWallCool:8,ivanHealCharges:2,ivanHealDelay:1.4,ivanHealAmount:2,
+  const UPGRADES=Object.freeze({paperHeal:2,paperDuration:1.2,paperCooldown:20,lowHealth:2,homingDamageMultiplier:.5,homingRange:760,homingSpeed:620,homingTurn:5.5});
+  const COMBAT=Object.freeze({jawDamage:1,hit:2,heavy:3,romanHP:3,erikHP:30,ivanHP:36,maxHostile:32,romanTell:.65,romanRushSpeed:365,romanRushTime:.42,romanRecovery:.85,ivanCycle:2.5,ivanWallTell:.9,ivanWallLife:5,ivanWallHP:2,ivanWallCool:8,ivanHealCharges:2,ivanHealDelay:1.4,ivanHealAmount:2,
     summonCap:2,summonFirst:3,summonCool:11,summonTell:1.5,summonEmerge:.85,summonLife:26,darkRomanHP:4,darkRomanTell:.8});
   const FACULTY=typeof module!=='undefined'&&module.exports?require('./faculty-data.js'):root.GurovFacultyData;
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -360,13 +360,14 @@
         if(shot.type==='bigHold'&&L.platforms.some(q=>shot.x+shot.w>q.x&&shot.x<q.x+q.w&&previousBottom<=q.y&&shot.y+shot.h>=q.y)){shot.life=0;this.emit('holdImpact',{x:shot.x+shot.w/2,y:shot.y+shot.h});}
         if(shot.enemy){if(shot.life>0&&shot.arm<=0&&overlap(p,shot)){this.damage(shot.damage??COMBAT.hit,shot.x,shot.owner);if(p!==this.player)return;shot.life=0;if(['tomato','tomatoTrap'].includes(shot.type))this.emit('tomatoSplat',{x:shot.x+12,y:shot.y+12});}}
         else {
-          for(const wall of b?.walls||[])if(wall.hp>0&&shot.life>0&&overlap(shot,wall)){wall.hp--;shot.life=0;this.emit('earthBreak',{x:wall.x+wall.w/2,y:wall.y+30});}
+          const damage=shot.type==='jaw'?COMBAT.jawDamage*(shot.homing?UPGRADES.homingDamageMultiplier:1):1;
+          for(const wall of b?.walls||[])if(wall.hp>0&&shot.life>0&&overlap(shot,wall)){wall.hp=Math.max(0,wall.hp-damage);shot.life=0;this.emit('earthBreak',{x:wall.x+wall.w/2,y:wall.y+30});}
           for(const trap of this.projectiles)if(trap.type==='tomatoTrap'&&trap.life>0&&overlap(shot,trap)){trap.life=0;shot.life=0;this.emit('tomatoSplat',{x:trap.x+17,y:trap.y+14});break;}
           if(shot.life<=0)continue;
-          for(const e of L.enemies)if(enemyTarget(e)&&overlap(shot,e)){e.hp--;e.hit=.13;shot.life=0;this.emit('hit',{x:e.x+20,y:e.y+20});if(e.hp===0){this.stats.defeats++;this.emit('enemy',{x:e.x+20,y:e.y+20,owner:e.kind});}break;}
+          for(const e of L.enemies)if(enemyTarget(e)&&overlap(shot,e)){e.hp=Math.max(0,e.hp-damage);e.hit=.13;shot.life=0;this.emit('hit',{x:e.x+20,y:e.y+20});if(e.hp===0){this.stats.defeats++;this.emit('enemy',{x:e.x+20,y:e.y+20,owner:e.kind});}break;}
           if(shot.life>0&&b&&b.active&&!b.defeated&&!b.exhausted&&overlap(shot,b)){
             shot.life=0;
-            if(this.bossOpen()){b.hp--;b.hit=.18;if(b.kind==='ivan'){b.healTime=0;b.healCool=Math.max(b.healCool,3);if(!b.academic&&b.hp<=b.maxHp/2){this.beginAcademicPhase();break;}}this.emit('hit',{x:b.x+55,y:b.y+60});if(b.hp<=0){b.hp=0;b.walls=[];b.wallTell=null;b.warning=null;b.slamWarning=false;b.trapTargets=null;b.escape=0;b.vx=0;b.y=500;b.speechTime=8;this.projectiles.forEach(s=>{if(s.enemy)s.life=0;});
+            if(this.bossOpen()){b.hp=Math.max(0,b.hp-damage);b.hit=.18;if(b.kind==='ivan'){b.healTime=0;b.healCool=Math.max(b.healCool,3);if(!b.academic&&b.hp<=b.maxHp/2){this.beginAcademicPhase();break;}}this.emit('hit',{x:b.x+55,y:b.y+60});if(b.hp<=0){b.hp=0;b.walls=[];b.wallTell=null;b.warning=null;b.slamWarning=false;b.trapTargets=null;b.escape=0;b.vx=0;b.y=500;b.speechTime=8;this.projectiles.forEach(s=>{if(s.enemy)s.life=0;});
               if(b.kind==='ivan'){b.exhausted=true;b.phase='exhausted';b.speech='Всё, запыхался... Только один вопрос!';this.dismissSummons();this.emit('ivanExhausted');}
               else{b.defeated=true;b.speech='Прости, Гурочка...';this.pendingScene='erik-rescue';this.pendingBossOutro='erik';this.emit('bossDefeated');this.unlockCompanion();}this.emit('save');}}
             else this.emit('shield',{x:shot.x,y:shot.y});

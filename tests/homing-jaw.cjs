@@ -29,8 +29,20 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    const points=await page.evaluate(()=>{const points=[];for(let i=0;i<21;i++){__advance(1);const s=gurov.state.projectiles[0];if(s)points.push(s);}return points;});
    await page.screenshot({path:dir+`/turn-${facing}.png`});
    const result=await page.evaluate(()=>{for(let i=0;i<200&&__world.projectiles.length;i++)__advance(1);return {hp:__world.level.enemies[0].hp,remaining:__world.projectiles.length};});
-   assert.equal(result.hp,2);assert.equal(result.remaining,0);cases.push({facing,launch:launch.projectiles[0],points,...result});
+   assert.equal(result.hp,2.5);assert.equal(result.remaining,0);cases.push({facing,launch:launch.projectiles[0],points,...result});
   }
+  await page.addInitScript(()=>localStorage.setItem('gurov-last-lemma-v1',JSON.stringify({version:1,campaign:3,level:1})));
+  await page.reload();await page.waitForFunction(()=>window.gurov?.state.assetReady);
+  await page.locator('#continue').click();await page.evaluate(()=>__advance(2));
+  assert.ok((await page.evaluate(()=>gurov.state)).upgradeChoice);
+  assert.match(await page.locator('.upgrade-grid article').first().textContent(),/Урон в 2 раза ниже, чем у обычной челюсти \(−50%\)/);
+  assert.ok(await page.evaluate(()=>{
+   const card=document.querySelector('.modal-card').getBoundingClientRect();
+   return [...document.querySelectorAll('#modal-actions button')].every(button=>button.getBoundingClientRect().bottom<=card.bottom);
+  }),'both choices must fit without scrolling');
+  await page.screenshot({path:dir+'/upgrade-damage.png'});
+  await page.locator('#modal-actions button').first().click();
+  assert.equal((await page.evaluate(()=>gurov.state)).upgrade,'homing');
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   fs.writeFileSync('tests/.output/homing-jaw.json',JSON.stringify({runtime:url,cases,errors,external},null,2));
   console.log('PASS: actual A/D + J inputs, both backward launches turn upward and hit once; offline renderer has no errors.');

@@ -27,13 +27,13 @@ for(const facing of [-1,1])for(const distance of [100,180,300,600])for(const dt 
  test(`backward rocket hits across ${distance}px, facing ${facing}, ${1/dt} Hz`,()=>{
   const {w,e}=arena({facing,distance}),{path,hp}=fire(w,e,dt);
   assert.ok(path[0].vy<0,'turn away from the floor');
-  assert.equal(hp,2,'one launch lands one hit before expiring or hitting the floor');
+  assert.equal(hp,2.5,'one launch lands one hit before expiring or hitting the floor');
  });
 }
 for(const facing of [-1,1])for(const behind of [false,true])for(const height of [0,130]){
  test(`tracks ${behind?'rear':'front'} moving target, facing ${facing}, height ${height}`,()=>{
   const {w,e}=arena({facing,behind,height,distance:300,speed:105});
-  assert.equal(fire(w,e).hp,2);
+  assert.equal(fire(w,e).hp,2.5);
  });
 }
 test('after a missed launch a newly available rear target is still acquired',()=>{
@@ -41,7 +41,7 @@ test('after a missed launch a newly available rear target is still acquired',()=
  w.update(1/120,{shoot:true});for(let i=0;i<12;i++)w.update(1/120,{});
  const s=w.projectiles[0];assert.equal(s.vy,0);w.level.enemies=[e];
  for(let i=0;i<200&&w.projectiles.length;i++)w.update(1/120,{});
- assert.equal(e.hp,2);
+ assert.equal(e.hp,2.5);
 });
 test('a lost target clears the turn and the rocket flies on without gravity',()=>{
  const {w,e}=arena({facing:-1});w.update(1/120,{shoot:true});const s=w.projectiles[0];

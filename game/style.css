@@ -108,6 +108,7 @@
 .upgrade-grid canvas{width:100%;height:145px;image-rendering:auto}
 .upgrade-grid h3{font:25px Georgia,serif;color:#f0d498;margin:0 0 12px}
 .upgrade-grid p{line-height:1.55;min-height:68px}.upgrade-grid small{display:block;font-size:11px;line-height:1.65;color:#a4c2c3}
+.upgrade-grid p.upgrade-tradeoff{min-height:0;color:#f0d498}
 #modal-body .upgrade-note{font-size:12px;color:#eac988;margin:18px 0 0}
 .upgrade-modal #modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px}
 .upgrade-modal #modal-actions button{background:#eac988;color:#203043;font-size:14px;padding:16px 22px;min-width:0;border:0;font-weight:650}
