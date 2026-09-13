@@ -1,0 +1,16 @@
+* text=auto
+*.js text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.swift text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.command text eol=lf
+*.png binary
+*.mp3 binary
+*.wav binary
+game/assets/music/*.js linguist-generated=true -diff
+game/assets/voices/*.js linguist-generated=true -diff
+game/assets/voices/manifest.js linguist-generated=false diff
+game/assets/roman-efforts-data.js linguist-generated=true -diff

@@ -1,0 +1,11 @@
+{
+  "name": "Гуров — Последний удовл",
+  "version": "2.7.0",
+  "build": "41",
+  "bundleId": "local.gurov.lastlemma",
+  "electron": {
+    "version": "44.3.0",
+    "platform": "win32-x64",
+    "sha256": "26bf9a617d58d81772b3d68305d59ee48272969c15083c06db634a77358a8d9d"
+  }
+}

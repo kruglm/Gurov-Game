@@ -1,0 +1,8 @@
+{
+  "name": "gurov-last-lemma",
+  "productName": "Гуров — Последний удовл",
+  "version": "2.7.0",
+  "description": "Офлайн-платформер в четырёх главах",
+  "main": "main.cjs",
+  "private": true
+}

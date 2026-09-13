@@ -1,0 +1,59 @@
+# Build outputs and local authoring environment
+/.build/
+/dist/
+/releases/
+/research/
+/videos/
+/.local/
+/* — local archive/
+*.app/
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.DS_Store
+Thumbs.db
+
+# Generated image banks: committed PNGs + art-manifest.json are their source
+/game/assets/sprites-data.js
+/game/assets/illustrations-data.js
+/game/assets/environments-data.js
+/game/assets/acting-data.js
+/game/assets/prologue-data.js
+
+# Test output; fixtures are intentionally committed
+/tests/.output/
+/tests/screenshots/
+playwright-report/
+test-results/
+*.log
+
+# Personal source recordings and credentials
+/private/
+*.wav
+*.ogg
+*.mp3
+*.m4a
+*.mp4
+*.mov
+*.webm
+*.zip
+*.7z
+*.dmg
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*-reference.wav
+*-reference.ogg
+*-reference.mp4
+*.safetensors
+
+# Local editor state
+.idea/
+.vscode/
+.codex/
+.agents/

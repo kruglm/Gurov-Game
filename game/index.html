@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Гуров — Последний удовл</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="stage">
+    <canvas id="game" width="1280" height="720" aria-label="Игровое поле платформера Гуров — Последний удовл"></canvas>
+    <div class="vignette"></div>
+    <div id="menu" class="screen">
+      <div class="edition"><span class="tiny-star">✦</span> НОЧЬ НА ФАКУЛЬТЕТЕ <span class="edition-line"></span> 2D ПРИКЛЮЧЕНИЕ</div>
+      <section class="title-block">
+        <p class="eyebrow">ВМK / КАФЕДРА ММП</p>
+        <h1>ГУРОВ<span>ПОСЛЕДНИЙ УДОВЛ</span></h1>
+        <p class="tagline">Иван снова убежал с защиты.<br>У профессора остался один вопрос.</p>
+        <div class="menu-actions">
+          <button id="start" class="primary">Начать доказательство <span>↗</span></button>
+          <button id="continue" class="secondary hidden">Продолжить <span>→</span></button>
+          <div class="small-actions"><button id="howto">Как играть</button><span>·</span><button id="lore">История и герой</button><span>·</span><button id="show-credits">Титры</button></div>
+        </div>
+      </section>
+      <div class="hero-caption"><span class="caption-line"></span><p>С. И. ГУРОВ<small>Конспект. Челюсть. Непоколебимая логика.</small></p></div>
+      <p id="ivan-menu-status">ИВАН ПАВЛЕНКО · ПОПРОБУЙТЕ ДОГНАТЬ</p>
+      <footer><span>ЧЕТЫРЕ ГЛАВЫ · ОДНА ПОГОНЯ</span><span>Вымышленная история, вдохновлённая математикой</span><button id="menu-sound" aria-label="Переключить звук" aria-pressed="false">♫ Включить музыку</button></footer>
+    </div>
+    <div id="hud" class="hidden">
+      <div class="hud-top"><div class="chapter-id"><span id="chapter-no">01 / 04</span><strong id="chapter-name"></strong><small id="chapter-subject"></small></div><div class="hud-stats"><span id="health" aria-label="Здоровье"></span><div id="pages-stat" class="stat collection-stat"><i>▤</i> <span id="pages">0 / 3</span><small>ДИПЛОМЫ</small></div><div class="stat collection-stat"><i>✧</i> <span id="sparks">0</span><small>УДОВЛЫ</small></div><button id="pause" class="icon-button" aria-label="Пауза">Ⅱ</button></div></div>
+      <div id="boss-hud" class="hidden"><div><span id="boss-name">ЭРИК ИЛЬЯСОВ</span><small id="boss-state"></small></div><div class="boss-track"><div id="boss-bar"></div></div></div>
+      <div id="chase-objective"></div><div id="upgrade-status" class="hidden"></div><div id="low-health" class="hidden" aria-hidden="true"></div><div id="toast" role="status"></div>
+      <div id="sign-prompt" class="hidden">E <span>Прочитать заметку</span></div>
+      <div class="hud-bottom"><span><kbd>A</kbd><kbd>D</kbd> идти <kbd>ПРОБЕЛ</kbd> двойной прыжок <kbd>J</kbd> челюсть <kbd>SHIFT</kbd> рывок</span><div class="dash-status"><span>РЫВОК</span><div><b id="dash-fill"></b></div></div></div>
+    </div>
+    <section id="credits" class="screen hidden" aria-labelledby="credits-title">
+      <header class="credits-heading"><p class="eyebrow">ПОФЛЕДНИЙ УДОВЛ ЗАФЛУЖЕН</p><h2 id="credits-title">Фпафибо за игру.</h2><span class="credits-rule"></span></header>
+      <div id="credits-roll" tabindex="0" role="region" aria-label="Титры ф благодарнофтью">
+        <div class="credits-copy">
+          <section><h3>ВФЕМ, КТО ДОБЕЖАЛ ДО КОНЦА</h3><p>Вы профли вефь этот путь, пережили фогласования и вфё-таки поймали Ивана.</p><p>Фпафибо каждому, кто провёл эту ночь ф Гуровым.</p></section>
+          <section><h3>ЗА ВАФЕ УПОРФТВО</h3><p>За каждый прыжок, каждую новую попытку и каждый дофтавленный удовл — отдельное фпафибо.</p><p>Без ваф это доказательфтво так бы и офталось на дофке.</p></section>
+          <section><h3>ЗА КОМПАНИЮ</h3><p>Вфем, кто играл, фмеялся, делилфя игрой и говорил: «Ну ещё одну попытку!»</p><p>Вафа нафтойчивофть дофтойна не профто удовла. Тут вфё отлично.</p></section>
+          <section class="credits-disclaimer"><h3>ВФЁ ЭТО — ВЫМЫФЕЛ</h3><p>Вфе фобытия и реплики вымышлены.</p><p>Вфе фовпадения ф реальными людьми и фобытиями флучайны.</p><p class="credits-last">А теперь — челюфть на мефто.<br>Можно и чаю.</p></section>
+        </div>
+      </div>
+      <aside class="credits-professor"><span>ПОФЛЕДНЕЕ ФЛОВО ПРОФЕФФОРА</span><p>«Ну фколько раз я тебе объяфнял…<br>Ты фправишься».</p></aside>
+      <div class="credits-controls"><button id="credits-pause" class="secondary">Офтановить титры Ⅱ</button><button id="credits-menu" class="primary">Вернутьфя в меню →</button></div>
+    </section>
+    <div id="modal" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title"><section class="modal-card"><p id="modal-label" class="eyebrow"></p><h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions"></div></section></div>
+    <section id="death-screen" class="screen hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="death-title" aria-describedby="death-cause death-quote">
+      <div class="death-art"><span id="death-mark" class="death-mark" aria-hidden="true">∴</span><canvas id="death-portrait" width="460" height="460" aria-label="Гуров собирается с силами для новой попытки"></canvas><span id="death-art-caption" class="death-art-caption">ПОСЛЕДНИЙ УДОВЛ ЕЩЁ ВПЕРЕДИ</span></div>
+      <div class="death-content">
+        <p class="eyebrow">ВЫ ПОГИБЛИ <span id="death-attempt"></span></p>
+        <h2 id="death-title">Доказательство<br>прервано.</h2>
+        <p id="death-cause"></p><blockquote id="death-quote"></blockquote>
+        <div class="death-actions">
+          <button id="death-checkpoint" class="primary" disabled>С контрольной точки <span>↵</span></button>
+          <p id="death-checkpoint-note">Собранные предметы и сюжетный прогресс сохранятся.</p>
+          <button id="death-restart" class="secondary" disabled>Уровень заново <span>R</span></button>
+          <p>Текущая глава с начала. Предыдущие главы сохранятся.</p>
+          <button id="death-menu" class="death-menu" disabled>В главное меню <span>Esc</span></button>
+        </div>
+      </div>
+      <p id="death-chapter" class="death-footer"></p><p class="death-footer death-help">↑ ↓ ВЫБОР <span>·</span> ENTER ПОДТВЕРДИТЬ <span>·</span> M ЗВУК</p>
+    </section>
+    <section id="boss-outro-controls" class="hidden" tabindex="-1" role="region" aria-label="Поражение босса">
+      <span id="outro-caption" role="status"></span><button id="outro-skip" disabled>Продолжить <span>ENTER / ПРОБЕЛ</span></button>
+    </section>
+    <button id="prologue-skip" class="hidden" aria-label="Пропустить вступление и перейти к первой главе">Начать погоню · пропустить →</button>
+    <button id="epilogue-skip" class="hidden">К титрам →</button>
+    <section id="level-loading" class="screen hidden" tabindex="-1" aria-labelledby="loading-title">
+      <div class="loading-orbit" aria-hidden="true"><span>λ</span><span>∑</span><span>∈</span></div>
+      <span id="loading-number" aria-hidden="true">02</span>
+      <div class="loading-content">
+        <p id="loading-chapter" class="eyebrow">ГЛАВА 02 / 04</p>
+        <div class="loading-papers" aria-hidden="true"><i>3</i><i>3</i><i>3</i></div>
+        <h2 id="loading-title">Ночной скалодром</h2>
+        <p class="loading-quote">«Фекундочку… Откроем фледующую дверь».</p>
+        <div id="loading-route" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p id="loading-status" role="status">Загружаем следующую главу</p>
+        <div id="loading-actions" class="hidden"><button id="loading-retry" class="primary">Повторить</button><button id="loading-menu" class="secondary">В главное меню</button></div>
+      </div>
+      <p class="loading-footer">ПОСЛЕДНИЙ УДОВЛ <span>ПОГОНЯ ПРОДОЛЖАЕТСЯ</span></p>
+    </section>
+  </main>
+  <script src="assets/sprites-data.js"></script><script src="actor.js"></script><script src="cast.js"></script><script src="assets/illustrations-data.js"></script><script src="faculty-data.js"></script><script src="faculty-motion.js"></script><script src="faculty.js"></script><script src="engine.js"></script><script src="music.js"></script><script src="assets/roman-efforts-data.js"></script><script src="audio.js"></script><script src="assets/acting-data.js"></script><script src="acting.js"></script><script src="assets/voices/manifest.js"></script><script src="voices.js"></script><script src="ambient-speech.js"></script><script src="encounter-speech.js"></script><script src="department-speech.js"></script><script src="ivan-effects.js"></script><script src="presentation.js"></script><script src="items.js"></script><script src="defeat.js"></script><script src="player-death.js"></script><script src="story.js"></script><script src="course-story.js"></script><script src="epilogue-stage.js"></script><script src="epilogue.js"></script><script src="assets/environments-data.js"></script><script src="environments.js"></script><script src="upgrades.js"></script><script src="completion.js"></script><script src="assets/prologue-data.js"></script><script src="prologue-lines.js"></script><script src="prologue.js"></script><script src="game.js"></script>
+</body>
+</html>

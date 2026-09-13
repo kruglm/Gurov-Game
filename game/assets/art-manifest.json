@@ -1,0 +1,74 @@
+{
+  "assets/sprites-data.js": {
+    "GUROV_SPRITE_DATA": "assets/gurov-sprites.png",
+    "GUROV_ANIMATION_DATA": "assets/gurov-animation-v2.png",
+    "GUROV_ACTION_DATA": {
+      "gurov": "assets/gurov-actions-v3.png",
+      "erik": "assets/erik-actions-v3.png",
+      "ivan": "assets/ivan-actions-v4.png",
+      "sasha": "assets/sasha-actions-v3.png",
+      "roman": "assets/roman-actions-v4.png",
+      "ravil": "assets/ravil-actions-v3.png",
+      "ivan-academic": "assets/acting/ivan-academic-v2.5.4.png",
+      "gurov-tired": "assets/acting/gurov-tired-v2.1.png",
+      "gurov-happy": "assets/acting/gurov-happy-v2.1.png"
+    },
+    "GUROV_CAPTIVE_DATA": "assets/ravil-captive-v1.7.4.png"
+  },
+  "assets/illustrations-data.js": {
+    "GUROV_ILLUSTRATION_DATA": {
+      "portraits": {
+        "erik-mocking": "assets/portraits/erik-mocking-v2.3.png",
+        "erik": "assets/portraits/erik-v1.6.png",
+        "gurov-blush": "assets/portraits/gurov-blush-v1.7.png",
+        "gurov-jaw-shock": "assets/portraits/gurov-jaw-shock-v2.3.1.png",
+        "gurov": "assets/portraits/gurov-v1.6.png",
+        "ivan": "assets/portraits/ivan-v1.6.png",
+        "maisuradze-blush": "assets/portraits/maisuradze-blush-v1.7.png",
+        "maisuradze": "assets/portraits/maisuradze-v1.7.png",
+        "sasha": "assets/portraits/sasha-v1.6.2.png"
+      },
+      "faculty": {
+        "alekseev": "assets/faculty-actions/alekseev-v2.2.png",
+        "dyukova": "assets/faculty-actions/dyukova-v2.2.png",
+        "feoktistov": "assets/faculty-actions/feoktistov-v2.2.png",
+        "grabovoy": "assets/faculty-actions/grabovoy-v2.2.png",
+        "ishchenko": "assets/faculty-actions/ishchenko-v2.2.png",
+        "kitov": "assets/faculty-actions/kitov-v2.2.png",
+        "maisuradze": "assets/faculty-actions/maisuradze-v2.2.png",
+        "mestetsky": "assets/faculty-actions/mestetsky-v2.2.png",
+        "oganov": "assets/faculty-actions/oganov-v2.2.png",
+        "senko": "assets/faculty-actions/senko-v2.2.png",
+        "vorontsov": "assets/faculty-actions/vorontsov-v2.2.png"
+      }
+    }
+  },
+  "assets/environments-data.js": {
+    "GUROV_ENVIRONMENT_DATA": {
+      "courtyard": "assets/backgrounds/vmk-summer-v1.9.png"
+    }
+  },
+  "assets/acting-data.js": {
+    "GUROV_ACTING_DATA": {
+      "ivan": "assets/acting/ivan-v2.0.png",
+      "erik": "assets/acting/erik-v2.0.png",
+      "moods": "assets/acting/moods-v2.0.png",
+      "team": "assets/acting/team-v2.0.png",
+      "lecture": "assets/acting/lecture-v2.0.png",
+      "ravil": "assets/acting/ravil-portraits-v2.6.png",
+      "oganovHurt": "assets/acting/oganov-hurt-v2.6.png",
+      "death": "assets/acting/gurov-death-v2.3.png",
+      "academic": "assets/acting/ivan-academic-portrait-v2.5.4.png",
+      "classroom": "assets/acting/classroom-v2.5.6.png",
+      "lectureFinal": "assets/acting/lecture-final-v2.5.6.png",
+      "chalkHand": "assets/acting/chalk-hand-v2.5.6.png"
+    }
+  },
+  "assets/prologue-data.js": {
+    "GUROV_PROLOGUE_DATA": {
+      "hall": "assets/prologue/hall.png",
+      "crowd": "assets/prologue/crowd.png",
+      "principals": "assets/prologue/principals.png"
+    }
+  }
+}
