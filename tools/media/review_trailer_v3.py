@@ -33,15 +33,41 @@ def main():
     assert speech[-1]['end'] <= edit['duration']
     assert music[-1]['end'] <= sting['at']
     captures = []
-    for name in ['roman', 'tokens', 'healing', 'crouch', 'erik', 'academic']:
-        record = json.loads((P / 'capture' / (name + '-record.json')).read_text())
-        assert not record['crossings'] and not record['errors'], name
-        used = [s for s in edit['shots'] if s['source'] == f'capture/{name}.mp4']
+    sources = sorted(set(s['source'] for s in edit['shots'] if '/capture/' in '/' + s['source']))
+    for source in sources:
+        file = P / source
+        name = file.stem
+        record = json.loads(file.with_name(name + '-record.json').read_text())
+        assert not record.get('crossings') and not record['errors'], name
+        used = [s for s in edit['shots'] if s['source'] == source]
         states = [s for s in record['states'] if any(
             take['start'] - .2 <= s['at'] <= take['start'] + take['d'] + .2 for take in used)]
         hp = min(s['p']['hp'] for s in states)
         assert hp >= (3 if name == 'healing' else 5), (name, hp)
-        captures.append(dict(name=name, minSelectedHP=hp, runnerCrossings=0))
+        assert all(s['mode'] not in ['dead', 'dying'] for s in states), name
+        companion_y = max((s['c']['y'] for s in states if s.get('c')), default=0)
+        assert companion_y <= 650, (name, 'Companion below ground', companion_y)
+        for take in used:
+            selected = [s for s in record['states'] if take['start'] <= s['at'] <= take['start'] + take['d']]
+            if name in ['roman-forward', 'tokens-forward', 'courtyard-clean']:
+                assert selected[-1]['p']['x'] - selected[0]['p']['x'] > 500, name
+                assert not any(s.get('intro') for s in selected), name
+            if name in ['courtyard-clean', 'homing-clean']:
+                assert selected[0]['p']['inv'] == 0, 'Visible spawn blinking'
+            for s in selected:
+                b = s.get('b')
+                if b and b['kind'] == 'ivan' and s['mode'] == 'play':
+                    assert b['x'] > s['p']['x'] + 100, (name, 'Boss crosses the player')
+        captures.append(dict(name=name, minSelectedHP=hp, runnerCrossings=len(record.get('crossings', [])),
+                             companionMaxY=companion_y))
+    # A new take must show the actual actor saying the requested line, not just
+    # pass an audio-only check against the later replacement voice track.
+    bank=json.loads((ROOT/'game/assets/voices/manifest.js').read_text().split('=',1)[1].removesuffix(';'))
+    for name, prefix in [('roman-forward', 'Сейчас целиком'), ('tokens-forward', 'Я потратил')]:
+        ident=next(value['id'] for key,value in bank.items() if key.startswith('roman|'+prefix))
+        record = json.loads((P / 'capture' / (name + '-record.json')).read_text())
+        voice = record['states'][0]['voice']
+        assert voice['actor'] == 'roman' and voice['id'] == ident, name
     report = dict(duration=edit['duration'], dynamicFraction=edit['dynamicFraction'],
                   gameplaySHA256=digest.hexdigest(), captures=captures, speech=[])
     output = P / 'review/v3-audit.json'

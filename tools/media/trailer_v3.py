@@ -16,19 +16,20 @@ def shot(name,source,start,d,audio=None,label=None,crop=None,subtitle=None):
 bar=240/132
 shots=[shot('opening','source-v2/cards/opening.mp4',0,6.5),shot('tomato','source-v2/capture/prologue.mp4',21.4,3.5)]
 block=[
- ('chase','source-v2/capture/courtyard.mp4',0,2.5,'sfx',None,None,None),
- ('platforms','source-v2/capture/courtyard.mp4',5.2,1,'sfx',None,None,None),
- ('roman','capture/roman.mp4',0,2,'sfx',None,None,'РОМАН · Сейчас целиком напишу статью с Claude Code!'),
- ('homing','source-v2/capture/homing.mp4',.05,2,'sfx','САМОНАВОДЯЩАЯСЯ ЧЕЛЮСТЬ',[896,504,100,140],None),
+ ('chase','capture/courtyard-clean.mp4',0,2.5,'sfx',None,None,None),
+ ('platforms','source-v2/capture/faculty.mp4',10.7,1,None,None,None,None),
+ ('roman','capture/roman-forward.mp4',0,2,'sfx',None,None,'РОМАН · Сейчас целиком напишу статью с Claude Code!'),
+ ('homing','capture/homing-clean.mp4',0,2,'sfx','САМОНАВОДЯЩАЯСЯ ЧЕЛЮСТЬ',[896,504,100,140],None),
  ('healing','capture/healing.mp4',.35,2,'sfx','СЪЕСТЬ РАБОТЫ ПОДОПЕЧНЫХ · +2 ♥',[896,504,0,144],None),
  ('crouch','capture/crouch.mp4',.35,1.5,'sfx','ПРИГНИСЬ. ПРИЦЕЛЬСЯ. РЫВОК!',[896,504,100,144],None),
- ('tokens','capture/tokens.mp4',0,2.5,'sfx',None,None,'РОМАН · Я потратил триллион токенов. Это только введение.'),
+ ('tokens','capture/tokens-forward.mp4',0,2.5,'sfx',None,None,'РОМАН · Я потратил триллион токенов. Это только введение.'),
  ('sasha','source-v2/capture/sasha.mp4',1,2,'sfx',None,None,None),
- ('faculty','source-v2/capture/faculty.mp4',6.2,1,None,None,None,None),
+ ('faculty','source-v2/capture/faculty.mp4',4,1,None,None,None,None),
  ('jaw','source-v2/capture/courses.mp4',42.65,1,None,None,None,None),
- ('erik-intro','capture/erik.mp4',0,2,'sfx',None,None,None),
- ('erik-fight','capture/erik.mp4',4.8,2,'sfx',None,None,None),
- ('captive','capture/erik.mp4',8.433333333333334,1,'sfx',None,None,None),
+ ('erik-intro','capture/erik.mp4',.25,1,'sfx',None,None,None),
+ ('erik-dodge','capture/erik.mp4',3.6,1,'sfx',None,None,None),
+ ('erik-fight','capture/erik.mp4',5.416666666666667,2,'sfx',None,None,None),
+ ('captive','capture/erik.mp4',9.05,1,'sfx',None,None,None),
  ('ravil','source-v2/capture/erik.mp4',44.6,1.5,'sfx',None,None,None),
 ]
 for name,source,start,bars,audio,label,crop,subtitle in block:shots.append(shot(name,source,start,bars*bar,audio,label,crop,subtitle))
@@ -53,7 +54,7 @@ by={s['name']:s for s in shots};DURATION=round(time*60)/60
 MUSIC=[dict(name='menu',at=0,end=10,gain=.31),dict(name='field',at=10,end=by['ivan-intro']['at'],gain=.72),dict(name='ivan',at=by['ivan-intro']['at'],end=by['title']['at'],gain=.70),dict(name='menu',at=by['title']['at'],end=by['sting']['at'],gain=.46)]
 
 def plan():
-    data={'duration':DURATION,'fps':60,'dynamicSeconds':by['title']['at']-10,'dynamicFraction':(by['title']['at']-10)/DURATION,'shots':shots,'music':MUSIC,'gameplaySpeed':1,'maxGameplayZoom':1280/896,'midJawVoice':False,'postTitleVoice':True}
+    data={'revision':'v3.1','duration':DURATION,'fps':60,'dynamicSeconds':by['title']['at']-10,'dynamicFraction':(by['title']['at']-10)/DURATION,'shots':shots,'music':MUSIC,'gameplaySpeed':1,'maxGameplayZoom':1280/896,'midJawVoice':False,'postTitleVoice':True}
     (P/'EDIT.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n');return data
 
 def render(s):
@@ -63,8 +64,8 @@ def render(s):
     for field in ['label','subtitle']:
         if not s[field]:continue
         file=EDIT/(s['name']+'-'+field+'.txt');file.write_text(s[field])
-        top=field=='label';y=0 if top else 963;height=108 if top else 117
-        filters += [f'drawbox=x=0:y={y}:w=iw:h={height}:color=0x061521@0.93:t=fill',f"drawtext=fontfile='{FONT}':textfile='{file}':fontcolor=0xf5dfaa:fontsize={34 if top else 32}:x=48:y={y+37}"]
+        top=field=='label';y=0 if top else 945;height=108 if top else 135
+        filters += [f'drawbox=x=0:y={y}:w=iw:h={height}:color=0x061521@0.93:t=fill',f"drawtext=fontfile='{FONT}':textfile='{file}':fontcolor=0xf5dfaa:fontsize=42:x=48:y={y+33 if top else y+45}"]
     filters += ['fps=60','tpad=stop_mode=clone:stop_duration=0.1',f"trim=end_frame={s['frames']}",'settb=expr=1/60','setpts=N','format=yuv420p']
     if s['name']=='sting':filters += [f"fade=t=out:st={s['d']-.18}:d=0.18"]
     run(['-ss',s['start'],'-i',P/s['source'],'-vf',','.join(filters),'-an','-r',60,'-fps_mode','cfr','-frames:v',s['frames'],'-c:v','libx264','-threads',2,'-preset','fast','-crf',17,target])
@@ -112,7 +113,7 @@ def mix():
         data,text=actor('roman',prefix);say(data,text,by[name]['at']+.05,1.10)
     data,text=actor('sasha','Профессор, заберите');say(excerpt(data,0,2.16),'Профессор, заберите мою курсовую!',by['sasha']['at'],1.08)
     # Match the recorded bubble, which starts around source time 7.5 s.
-    data,text=actor('erik','Гурочка, у меня всё согласовано!');say(data,text,by['erik-fight']['at']+2.7,1.03)
+    data,text=actor('erik','Гурочка, у меня всё согласовано!');say(data,text,by['erik-fight']['at']+7.5-by['erik-fight']['start'],1.03)
     data,text=actor('ravil','Гуров, спасибо за спасение!');say(excerpt(data,0,2.15),'Гуров, спасибо за спасение!',by['ravil']['at']+.12,1.06)
     data,text=actor('ivan','Я ухожу в академический отпуск!');say(data,text,by['academic-intro']['at']+.85,1.04)
     # Keep the mid-film jaw beat silent; the user's requested voiced joke returns
@@ -144,9 +145,15 @@ def mix():
     chime(by['jaw']['at']+1.05,83,.022)
     duck=np.ones(n,np.float32)
     for row in speech:
-        lo=max(0,round((row['at']-.07)*SR));hi=min(n,round((row['end']+.16)*SR));env=np.full(hi-lo,.40,np.float32)
+        # Quiet character voices need a little more room than the narrator.
+        # Keep at least 4 dB average voice/score separation without boosting peaks.
+        a=round(row['at']*SR);b=round(row['end']*SR)
+        vrms=float(np.sqrt(np.mean(voice[a:b]**2)));mrms=float(np.sqrt(np.mean(music[a:b]**2)))
+        floor=float(np.clip(vrms/max(mrms*10**(4/20),1e-7),.25,.40))
+        row['musicDuck']=floor
+        lo=max(0,round((row['at']-.07)*SR));hi=min(n,round((row['end']+.16)*SR));env=np.full(hi-lo,floor,np.float32)
         attack=min(round(.07*SR),len(env)//2);release=min(round(.16*SR),len(env)//2)
-        env[:attack]=np.linspace(1,.4,attack);env[-release:]=np.linspace(.4,1,release);duck[lo:hi]=np.minimum(duck[lo:hi],env)
+        env[:attack]=np.linspace(1,floor,attack);env[-release:]=np.linspace(floor,1,release);duck[lo:hi]=np.minimum(duck[lo:hi],env)
     music*=duck[:,None];combined=music+voice+effects;peak=float(np.abs(combined).max());combined*=min(1,.94/max(.001,peak))
     for name,data in [('music',music),('voice',voice),('sfx',effects),('premaster',combined)]:wav(A/f'trailer-{name}.wav',data)
     run(['-i',A/'trailer-premaster.wav','-af','loudnorm=I=-16:TP=-2:LRA=9','-ar',SR,A/'trailer-master.wav'])
@@ -156,7 +163,9 @@ def mix():
 def mux():
     files=[EDIT/(s['name']+'.mp4') for s in shots]
     concat=EDIT/'concat.txt';concat.write_text(''.join("file '"+str(f)+"'\n" for f in files))
-    run(['-f','concat','-safe',0,'-i',concat,'-i',A/'trailer-master.wav','-c:v','copy','-c:a','aac','-b:a','256k','-ar',SR,'-t',DURATION,'-movflags','+faststart','-metadata','title=Гуров — Последний удовл | Трейлер v3',ROOT/'videos/Gurov-Trailer-v3.mp4'])
+    output=ROOT/'videos/Gurov-Trailer-v3.mp4';temporary=output.with_name('.Gurov-Trailer-v3.tmp.mp4')
+    run(['-f','concat','-safe',0,'-i',concat,'-i',A/'trailer-master.wav','-c:v','copy','-c:a','aac','-b:a','256k','-ar',SR,'-t',DURATION,'-movflags','+faststart','-metadata','title=Гуров — Последний удовл | Трейлер v3',temporary])
+    temporary.replace(output)
 
 def export():
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:list(pool.map(render,shots))

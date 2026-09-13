@@ -4,9 +4,11 @@ const {chromium}=require('playwright'),{pathToFileURL}=require('node:url');
 const {World}=require('../../game/engine'),{plan,actions}=require('./control.cjs');
 const dir=path.resolve('research/video-v3/capture');fs.mkdirSync(dir,{recursive:true});
 const definitions={
+ 'courtyard-clean':{level:0,x:120,movement:'forward',target:2000,seconds:8},
+ 'roman-forward':{level:0,x:275,upgrade:'homing',line:2,movement:'forward',target:1150,shoot:false,seconds:5},
+ 'tokens-forward':{level:1,x:450,upgrade:'homing',line:3,movement:'forward',target:1710,shoot:false,seconds:5.5},
+ 'homing-clean':{level:0,x:275,upgrade:'homing',movement:'forward',target:860,seconds:5},
  healing:{level:1,x:1940,upgrade:'paper',rescued:true,hp:3,seconds:5},
- roman:{level:0,x:450,y:392,upgrade:'homing',line:2,seconds:5},
- tokens:{level:1,x:1120,y:392,upgrade:'homing',line:3,seconds:6},
  crouch:{level:0,x:275,upgrade:'homing',seconds:5},
  erik:{level:1,x:2200,upgrade:'homing',seconds:14},
  academic:{level:3,x:1100,upgrade:'homing',academic:true,seconds:15}
@@ -48,11 +50,13 @@ const definitions={
    const t=i/60;
    if(name==='healing')await keys(t>=.6&&t<.65?['KeyH']:[]);
    else if(name==='crouch')await keys(t<.4?[]:t<1.2?['KeyS']:t<1.8?['KeyS','KeyJ']:t<2.7?['KeyS','KeyD']:t<2.75?['ShiftLeft','KeyD']:t<3?['KeyD']:[]);
-   else if(name==='roman'||name==='tokens'){
+   else if(config.movement==='forward'){
     if(i%12===0){
      const w=Object.assign(Object.create(World.prototype),await page.evaluate(()=>JSON.parse(JSON.stringify(__world))));
-     const [id]=plan(w,{x:config.x,y:config.y??487},false,{shoot:false,keepEnemies:true}),a=actions[id],codes=[];
-     if(a.right)codes.push('KeyD');if(a.left)codes.push('KeyA');if(a.jump)codes.push('Space');await keys(codes);
+     const [id]=plan(w,{x:config.target,y:487},false,{shoot:config.shoot,keepEnemies:config.shoot===false}),a=actions[id],codes=[];
+     if(a.right)codes.push('KeyD');if(a.left)codes.push('KeyA');if(a.jump)codes.push('Space');
+     const p=w.player,threat=w.level.enemies.some(e=>e.hp>0&&Math.abs(e.x-p.x)<440&&Math.sign(e.x-p.x)===p.facing);
+     if(config.shoot!==false&&threat)codes.push('KeyJ');await keys(codes);
     }else if(i%12===11)await keys(held.filter(k=>k!=='Space'));
    }else if(i%12===0){
     const w=Object.assign(Object.create(World.prototype),await page.evaluate(()=>JSON.parse(JSON.stringify(__world))));
