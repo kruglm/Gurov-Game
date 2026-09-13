@@ -46,6 +46,32 @@
       ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,feet+bob);ctx.rotate(lean*facing);ctx.scale(facing*scale*sx,scale*sy);ctx.imageSmoothingEnabled=false;ctx.drawImage(f.image,-f.anchor,-f.image.height);ctx.restore();
     }
     point(index,ux,uy,x,feet,height){const f=this.frames[index],scale=height/this.bodyHeight;return {x:x+(ux-.495)*this.cellW*scale,y:feet-(f.footY-uy*this.cellH)*scale};}
+    drawDashShield(ctx,p,x,front=false){
+      // Use the same timer as damage immunity; no lingering shield after a dash.
+      if(p.dash<=0)return;
+      const height=GurovEngine.PLAYER_ART_H,entry=smooth((.18-p.dash)/.035);
+      const rx=height*.46,ry=height*.60,opacity=.6+.4*clamp(p.dash/.035,0,1);
+      ctx.save();ctx.translate(x,p.y+p.h-height*.5);ctx.scale(p.facing*(.92+.08*entry),.97+.03*entry);ctx.globalAlpha=opacity;
+      if(!front){
+        const glow=ctx.createRadialGradient(0,-12,16,0,0,ry);
+        glow.addColorStop(0,'#a3ffed00');glow.addColorStop(.6,'#83eedd0c');glow.addColorStop(1,'#62ede54a');
+        ctx.fillStyle=glow;ctx.strokeStyle='#99ffeb88';ctx.lineWidth=1.6;
+        ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+        // Short wake trails make the barrier read in the direction of travel.
+        ctx.strokeStyle='#99ffdf99';ctx.lineWidth=2;
+        for(const y of [-34,0,34]){const edge=-rx*Math.sqrt(1-y*y/(ry*ry));ctx.beginPath();ctx.moveTo(edge-8,y);ctx.lineTo(edge-25-entry*14,y);ctx.stroke();}
+      }else{
+        ctx.shadowColor='#79ffe3';ctx.shadowBlur=12;ctx.strokeStyle='#cefff1';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,-1.22,1.22);ctx.stroke();
+        ctx.shadowBlur=0;ctx.strokeStyle='#eafffa77';ctx.lineWidth=1;
+        ctx.beginPath();ctx.ellipse(-2,0,rx-7,ry-7,0,-1.08,.92);ctx.stroke();
+        // A small shield crest keeps the meaning clear even during the short dash.
+        ctx.translate(rx-1,-5);ctx.fillStyle='#194c4c';ctx.strokeStyle='#ddfff3';ctx.lineWidth=1.6;
+        ctx.beginPath();ctx.moveTo(-9,-11);ctx.lineTo(9,-11);ctx.lineTo(8,1);ctx.quadraticCurveTo(5,7,0,11);ctx.quadraticCurveTo(-5,7,-8,1);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-4,-1);ctx.lineTo(-1,3);ctx.lineTo(5,-4);ctx.stroke();
+      }
+      ctx.restore();
+    }
     drawPlayer(ctx,p,x,time,fallback,cast){
       const running=p.grounded&&Math.abs(p.vx)>28,feet=p.y+p.h,height=GurovEngine.PLAYER_ART_H;
       this.runFrame=Math.floor(p.gait*8)%8;
@@ -62,8 +88,10 @@
       this.playerMood=character;
       if(p.eating>0){pose=14+Math.floor((GurovEngine.UPGRADES.paperDuration-p.eating)*7)%2;}
       else if(character==='gurov-happy'&&pose>=14)pose=0;
+      this.drawDashShield(ctx,p,x);
       if(p.dash>0){cast.draw(ctx,character,12,x-p.facing*27,feet,height,p.facing,0,.20);cast.draw(ctx,character,12,x-p.facing*50,feet,height,p.facing,0,.08);}
       cast.motion(ctx,character,pose,x,feet,height,p.facing,p.gait,running,alpha);
+      this.drawDashShield(ctx,p,x,true);
       if(p.eating>0){for(let i=0;i<5;i++){const u=(time*1.8+i*.2)%1;ctx.save();ctx.globalAlpha=1-u;ctx.translate(x+p.facing*(25+u*18),p.y+31+u*70);ctx.rotate(u*4+i);ctx.fillStyle='#f1e5c9';ctx.fillRect(-2,-2,5,3);ctx.restore();}}
     }
     updateMenu(dt,sound){
