@@ -371,21 +371,32 @@
       const angle=from+clamp(delta,-turn,turn);
       shot.vx=Math.cos(angle)*UPGRADES.homingSpeed;shot.vy=Math.sin(angle)*UPGRADES.homingSpeed;
     }
+    companionTarget(){
+      const p=this.player,w=44;let target=clamp(p.x-p.facing*105,0,this.level.width-w);
+      // Stay on a real landing surface when the professor pauses beside a gap.
+      const floor=this.level.platforms.filter(q=>q.w>=w+16&&Math.abs(q.y-p.y-p.h)<10)
+        .sort((a,b)=>Math.abs(clamp(target,a.x+8,a.x+a.w-w-8)-target)-Math.abs(clamp(target,b.x+8,b.x+b.w-w-8)-target))[0];
+      if(p.grounded&&floor)target=clamp(target,floor.x+8,floor.x+floor.w-w-8);
+      return target;
+    }
     spawnCompanion(){
-      const p=this.player;this.companion={name:'Равиль Абдраманов',x:clamp(p.x-p.facing*105,0,this.level.width-44),y:p.y+p.h-105,w:44,h:105,vx:0,vy:0,facing:p.facing,grounded:false,gait:0,cool:.75,cast:0,speech:'Гуров, я с вами!',speechTime:3,speechCool:4,lineIndex:0,affection:0};
+      const p=this.player;this.companion={name:'Равиль Абдраманов',x:this.companionTarget(),y:p.y+p.h-105,w:44,h:105,vx:0,vy:0,facing:p.facing,grounded:false,gait:0,cool:.75,cast:0,speech:'Гуров, я с вами!',speechTime:3,speechCool:4,lineIndex:0,affection:0};
     }
     unlockCompanion(){
       this.level.captive=null;if(this.companionUnlocked)return;this.companionUnlocked=true;this.spawnCompanion();this.emit('companionJoined',{x:this.companion.x,y:this.companion.y});
     }
     updateCompanion(dt){
       const c=this.companion,p=this.player;if(!c)return;
-      const target=clamp(p.x-p.facing*105,0,this.level.width-c.w),dx=target-c.x;
-      if(Math.abs(p.x-c.x)>650||c.y>880){c.x=target;c.y=p.y+p.h-c.h;c.vx=0;c.vy=0;}
+      const target=this.companionTarget();
+      if(Math.abs(p.x-c.x)>650||c.y>880){c.x=target;c.y=p.y+p.h-c.h;c.vx=0;c.vy=0;c.grounded=false;}
+      const dx=target-c.x;
       c.cast=Math.max(0,c.cast-dt);c.cool=Math.max(0,c.cool-dt);c.speechTime=Math.max(0,c.speechTime-dt);c.speechCool-=dt;c.affection=Math.max(0,c.affection-dt);
       if(c.speechCool<=0&&Math.abs(p.x-c.x)<320){c.speech=RAVIL_LINES[c.lineIndex++%RAVIL_LINES.length];c.speechTime=4;c.speechCool=6.5;c.affection=2;this.emit('companionSpeech',{speech:c.speech});}
       c.vx+=(clamp(dx*4,-350,350)-c.vx)*Math.min(1,dt*8);
       if(Math.abs(c.vx)>15)c.facing=Math.sign(c.vx);
-      if(c.grounded&&p.y+p.h<c.y+c.h-48&&Math.abs(dx)<280)c.vy=-670;
+      const ahead=c.x+c.w/2+Math.sign(dx)*42;
+      const support=this.level.platforms.some(q=>ahead>=q.x&&ahead<=q.x+q.w&&Math.abs(q.y-c.y-c.h)<10);
+      if(c.grounded&&((p.y+p.h<c.y+c.h-48&&Math.abs(dx)<280)||(!support&&Math.abs(dx)>70)))c.vy=-670;
       const bottom=c.y+c.h;c.vy=Math.min(900,c.vy+1850*dt);c.x=clamp(c.x+c.vx*dt,0,this.level.width-c.w);c.y+=c.vy*dt;c.grounded=false;
       if(c.vy>=0)for(const q of this.level.platforms)if(c.x+c.w>q.x&&c.x<q.x+q.w&&bottom<=q.y+7&&c.y+c.h>=q.y){c.y=q.y-c.h;c.vy=0;c.grounded=true;break;}
       if(c.grounded)c.gait+=Math.abs(c.vx)*dt/112;
