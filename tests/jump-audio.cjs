@@ -1,4 +1,4 @@
-/* Real keyboard takeoffs and SFX mixing: jumping must not own or duck speech. */
+/* Real keyboard movement SFX must not own or duck speech. */
 const {chromium}=require('./browser.cjs');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{pathToFileURL}=require('node:url');
 (async()=>{
@@ -8,10 +8,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(/^https?:/.test(r.url()))external.push(r.url());});
   await page.addInitScript(require('./campaign-clock.cjs'));
   await page.addInitScript(()=>{
-   window.__jumpSounds=[];let Sound;
+   window.__jumpSounds=[];window.__dashSounds=[];let Sound,Engine;
+   Object.defineProperty(window,'GurovEngine',{get(){return Engine;},set(api){Engine={...api,World:class extends api.World{
+    constructor(...args){super(...args);this.level.enemies=[];this.runner=null;}
+   }};}});
    Object.defineProperty(window,'GurovSound',{configurable:true,get(){return Sound;},set(api){Sound=class extends api{
     constructor(...args){super(...args);window.__sound=this;}
     jumpEffort(second){const played=super.jumpEffort(second);if(played)__jumpSounds.push({second:!!second,name:[...this.jumpNodes][0].name});return played;}
+    sfx(name,detail){const before=new Set(this.voices);super.sfx(name,detail);if(name==='dash')__dashSounds.push([...this.voices].filter(v=>!before.has(v)).map(v=>v.buffer?'air':v.type));}
    };}});
   });
   await page.goto(pathToFileURL(path.resolve(process.argv[2]||'game/index.html')).href);
@@ -41,6 +45,18 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.deepEqual(await page.evaluate(()=>__gainWrites),[],'no music gain automation from any jump');
   assert.equal(await page.evaluate(()=>__speechCalls),0,'jump never enters speech API');
   assert.equal(await page.evaluate(()=>__sound.voiceQueue?.length||0),0);
+  // Both dash bindings trigger the layered cue only when the engine accepts a dash.
+  await page.evaluate(()=>__advance(160));
+  await page.keyboard.press('k');await page.evaluate(()=>__advance(2));
+  assert.ok(await page.evaluate(()=>gurov.state.player.dash>0));
+  await page.keyboard.press('k');await page.evaluate(()=>__advance(2));
+  assert.equal(await page.evaluate(()=>__dashSounds.length),1,'cooldown rejects both movement and sound');
+  await page.evaluate(()=>__advance(120));
+  await page.keyboard.down('ShiftLeft');await page.evaluate(()=>__advance(2));await page.keyboard.up('ShiftLeft');
+  const dashes=await page.evaluate(()=>__dashSounds);
+  assert.deepEqual(dashes,[['air','triangle','sine'],['air','triangle','sine']]);
+  assert.deepEqual(await page.evaluate(()=>__gainWrites),[],'dash never changes music gain');
+  assert.equal(await page.evaluate(()=>__speechCalls),0,'dash never becomes a spoken line');
   await page.waitForTimeout(500);
   assert.equal(await page.evaluate(()=>__sound.jumpNodes.size),0,'one-shots release audio nodes');
   // During a real spoken line, jumping preserves its source, position and queue.
@@ -50,7 +66,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    const s=__sound,job=s.voiceJob,speech=s.speechSource,queue=s.voiceQueue,level=s.musicBus.gain.value;
    __gainWrites=[];const played=s.jumpEffort(false),jump=[...s.jumpNodes][0];
    const roman=s.effort('throw'),independent=s.jumpNodes.has(jump)&&s.effortNodes.size===1;
-   s.jumpEffort(true);
+   s.jumpEffort(true);s.sfx('dash');
    return {played,roman,independent,romanStillPlaying:s.effortNodes.size===1,sameJob:s.voiceJob===job,sameSource:s.speechSource===speech,sameQueue:s.voiceQueue===queue,sameLevel:s.musicBus.gain.value===level,writes:__gainWrites};
   });
   assert.deepEqual(overlap,{played:true,roman:true,independent:true,romanStillPlaying:true,sameJob:true,sameSource:true,sameQueue:true,sameLevel:true,writes:[]});
@@ -62,7 +78,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   });
   assert.deepEqual(cleanup,{paused:true,muted:true,blurred:true,closed:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  fs.mkdirSync('tests/.output',{recursive:true});fs.writeFileSync('tests/.output/jump-audio.json',JSON.stringify({buffers,takeoffs,overlap,cleanup,errors,external},null,2));
-  console.log('PASS: four Gurov efforts on real takeoffs; no sound on rejected jump; no music ducking, speech interruption or Roman SFX collision; pause/mute/close cleanup.');
+  fs.mkdirSync('tests/.output',{recursive:true});fs.writeFileSync('tests/.output/jump-audio.json',JSON.stringify({buffers,takeoffs,dashes,overlap,cleanup,errors,external},null,2));
+  console.log('PASS: jump and layered dash SFX on accepted keyboard actions; no music ducking, speech interruption or Roman SFX collision; pause/mute/close cleanup.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

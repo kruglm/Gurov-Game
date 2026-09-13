@@ -183,7 +183,13 @@
       else if(name==='jump'){const voiced=this.jumpEffort(!!detail.second);tone(detail.second?69:64,.13,voiced?.025:.09,detail.second?84:79);}
       else if(name==='companionShot'){tone(79,.15,.075,86);}
       else if(name==='companionJoined'){[74,77,81,86].forEach((n,i)=>tone(n,.45,.12,null,i*.12));}
-      else if(name==='dash'){tone(45,.15,.1,78,0,'triangle');}
+      else if(name==='dash'){
+        // Air rush, a low launch impulse, then the shield's short glassy edge.
+        // All three layers use SFX; they never own speech or automate music gain.
+        this.defeatNoise(.22,.22,4600);
+        tone(53,.15,.10,35,0,'triangle');
+        tone(88,.11,.055,76,.012,'sine');
+      }
       else if(name==='shoot'){tone(48,.10,.14,71);tone(93,.035,.075,81,.075,'triangle');tone(88,.03,.055,80,.115,'triangle');}
       else if(name==='jawClack'||name==='menuClack'){const v=name==='menuClack'?.025:.07;tone(92,.032,v,80,0,'triangle');tone(85,.027,v*.6,77,.038,'triangle');}
       else if(name==='paperBite'){tone(76,.055,.028,51,0,'triangle');tone(97,.024,.018,68,.025,'square');}
