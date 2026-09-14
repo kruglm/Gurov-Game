@@ -2,12 +2,12 @@
   'use strict';
   const {World,CHAPTERS,W,H,clamp,FINAL_LEVEL,CAMPAIGN,migrateSave,lisp}=GurovEngine;
   const $=id=>document.getElementById(id),canvas=$('game');let ctx=canvas.getContext('2d',{alpha:false});
-  const sound=new GurovSound(),ambientSpeech=new GurovAmbientSpeech(sound),encounterSpeech=new GurovEncounterSpeech(sound),departmentSpeech=new GurovDepartmentSpeech(sound),actor=new GurovActor(),cast=new GurovCast(),keys=new Set(),pressed=new Set(),released=new Set();
+  const sound=new GurovSound(),ambientSpeech=new GurovAmbientSpeech(sound),encounterSpeech=new GurovEncounterSpeech(sound),departmentSpeech=new GurovDepartmentSpeech(sound),actor=new GurovActor(),cast=new GurovCast(),controls=new GurovInput(),{keys,pressed,released}=controls;
   const SAVE='gurov-last-lemma-v1';let world=null,mode='menu',previousMode='menu',last=0,accum=0,clock=0,toastTime=0,shake=0,modalClose=null;
   const VICTORY='gurov-last-lemma-victory-v1',menuIvan=new GurovMenuIvan();let campaignCleared=false,victoryReset=false;
   let saveWarning=false,assetReady=false,story=null,credits=null,transition=null,deathScreen=null,playerDeath=null,deathBackground=null,bossOutro=null,outroBackground=null,epilogue=null,prologue=null;const hudCache={};const effects=[];let spriteFrames=[];
   const random=(n)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
-  let upgradeChoice=null,renderPrevious=null,backgroundPaused=document.hidden;
+  let upgradeChoice=null,renderPrevious=null,backgroundPaused=document.hidden,mobile=null;
   const DEATH_THEMES={
     erik:{actor:'erik',portrait:'erik-mocking',pose:14,title:'Попытка\nсогласована.',cause:'Эрик оказался убедительнее. Пока что.',quote:'«Сейчас мы и тебя согласуем, Гурочка».',caption:'ЭРИК ИЛЬЯСОВ · ВСЁ СОГЛАСОВАНО',mark:'✓'},
     ivan:{actor:'ivan',portrait:'ivan-mocking',pose:12,title:'Защита\nотложена.',cause:'Иван прервал погоню и снова убежал вперёд.',quote:'«Ловите помидор! А меня — в следующий раз».',caption:'ИВАН ПАВЛЕНКО · СНОВА ВПЕРЕДИ',mark:'→'},
@@ -16,7 +16,7 @@
     fall:{actor:'gurov',pose:13,title:'Гравитация\nдоказана.',cause:'На этот раз прыжок не сошёлся.',quote:lisp('«В следующий раз начнём с двойного прыжка».'),caption:'ГУРОВ · ЕЩЁ ОДИН ПРЫЖОК ДО ДОКАЗАТЕЛЬСТВА',mark:'↓'},
     damage:{actor:'gurov',pose:13,title:'Доказательство\nпрервано.',cause:'У профессора закончились силы.',quote:lisp('«Это ещё не конец доказательства. Начнём ещё раз».'),caption:'ПОСЛЕДНИЙ УДОВЛ ЕЩЁ ВПЕРЕДИ',mark:'∴'}
   };
-  function fit(){const s=Math.min(innerWidth/W,innerHeight/H);$('stage').style.transform=`scale(${s})`;$('stage').style.left=(innerWidth-W*s)/2+'px';$('stage').style.top=(innerHeight-H*s)/2+'px';}
+  function fit(){const w=visualViewport?.width||innerWidth,h=visualViewport?.height||innerHeight,s=Math.min(w/W,h/H);$('stage').style.transform=`scale(${s})`;$('stage').style.left=(w-W*s)/2+'px';$('stage').style.top=(h-H*s)/2+'px';}
   addEventListener('resize',fit);fit();
   function readSave(){try{const s=JSON.parse(localStorage.getItem(SAVE));return s?.version===1&&Number.isInteger(s.level)&&s.level>=0&&s.level<CHAPTERS.length?migrateSave(s):null;}catch(e){return null;}}
   function rememberVictory(){
@@ -44,8 +44,8 @@
   function toast(message,seconds=3.5){$('toast').textContent=message;$('toast').classList.add('visible');toastTime=seconds;}
   function dialog(label,title,body,buttons,onClose=null){
     $('modal').classList.remove('story-modal','upgrade-modal');
-    keys.clear();pressed.clear();released.clear();previousMode=mode;mode='modal';sound.setState('pause');
-    $('modal-label').textContent=label;$('modal-title').textContent=title;$('modal-body').innerHTML=body;$('modal-actions').replaceChildren();
+    controls.clear();previousMode=mode;mode='modal';sound.setState('pause');
+    $('modal-label').textContent=label;$('modal-title').textContent=title;$('modal-body').innerHTML=body;mobile?.adaptDialog($('modal-body'));$('modal-actions').replaceChildren();
     buttons.forEach((b,i)=>{const el=document.createElement('button');el.className=i===0?'primary':'secondary';el.textContent=b.text;el.onclick=()=>{sound.init();b.action();};$('modal-actions').append(el);});
     $('modal').classList.remove('hidden');modalClose=onClose;
     const card=document.querySelector('.modal-card');card.tabIndex=-1;card.scrollTop=0;
@@ -63,7 +63,7 @@
     sound.setContext?.(world.index,b?b.hp/b.maxHp:1);
     sound.setState(world.intro?'intro':b?.active&&!b.defeated?'boss':'play');
   }
-  function closeDialog(){sound.stopSpeech(); $('modal').classList.add('hidden');$('modal').classList.remove('story-modal');mode=previousMode;modalClose=null;keys.clear();pressed.clear();released.clear();if(mode==='play')syncGameplayMusic();else sound.setState('menu'); }
+  function closeDialog(){sound.stopSpeech(); $('modal').classList.add('hidden');$('modal').classList.remove('story-modal');mode=previousMode;modalClose=null;controls.clear();if(mode==='play')syncGameplayMusic();else sound.setState('menu'); }
   function storyPortrait(){if(story)story.portraitReady=drawGurovPortrait($('story-portrait'),cast,GurovStory[story.kind][story.index],clock-story.started);}
   function showStory(kind){
     if(story||bossOutro||!GurovStory[kind])return;
@@ -86,13 +86,13 @@
     };
     story.advance=advance;show();
   }
-  function clearBossOutro(){bossOutro=null;outroBackground=null;sound.stopDefeat();$('boss-outro-controls').classList.add('hidden');keys.clear();pressed.clear();released.clear();}
+  function clearBossOutro(){bossOutro=null;outroBackground=null;sound.stopDefeat();$('boss-outro-controls').classList.add('hidden');controls.clear();}
   function beginBossOutro(kind){
     if(bossOutro||!world?.pendingBossOutro)return;
     shake=0;gameScene();outroBackground=document.createElement('canvas');outroBackground.width=W;outroBackground.height=H;
     const backdrop=outroBackground.getContext('2d');backdrop.filter='blur(5px)';backdrop.drawImage(canvas,0,0);backdrop.filter='none';
     bossOutro=new GurovBossOutro(kind,matchMedia('(prefers-reduced-motion: reduce)').matches);
-    mode='boss-outro';accum=0;keys.clear();pressed.clear();released.clear();effects.length=0;toastTime=0;
+    mode='boss-outro';accum=0;controls.clear();effects.length=0;toastTime=0;
     $('toast').classList.remove('visible');$('modal').classList.add('hidden');$('hud').classList.add('hidden');
     $('outro-caption').textContent=kind==='erik'?'Эрик побеждён. Щит разбит, Равиль свободен.':'Иван пойман. Погоня завершена.';
     $('outro-skip').disabled=true;$('boss-outro-controls').classList.remove('hidden');$('boss-outro-controls').focus();
@@ -114,7 +114,7 @@
     if(index===0&&saved?.pendingPrologue){showPrologue(saved);return;}
     if(index===0&&!saved&&!prepared)resetVictory();
     upgradeChoice=null;renderPrevious=null;
-    clearBossOutro();clearDeath();story=null;modalClose=null;keys.clear();pressed.clear();released.clear();accum=0;
+    clearBossOutro();clearDeath();story=null;modalClose=null;controls.clear();accum=0;
     world=prepared||new World(index,saved);index=world.index;$('stage').classList.toggle('summer-yard',index===0);if(index===2)GurovIllustrations.loadFaculty();effects.length=0;Object.keys(hudCache).forEach(k=>delete hudCache[k]);mode='play';$('menu').classList.add('hidden');$('hud').classList.remove('hidden');$('modal').classList.add('hidden');
     $('chapter-no').textContent=`0${index+1} / 04`;$('chapter-name').textContent=CHAPTERS[index].name;$('chapter-subject').textContent=CHAPTERS[index].subject;
     document.querySelectorAll('.collection-stat').forEach(e=>e.classList.toggle('hidden',index===FINAL_LEVEL));$('pages-stat').classList.toggle('hidden',index>=2);$('boss-hud').classList.add('hidden');syncGameplayMusic();persist();
@@ -142,7 +142,7 @@
     cast.draw($('paper-preview').getContext('2d'),'gurov-happy',14,190,139,125,1);
     const card=document.querySelector('.modal-card');card.tabIndex=-1;requestAnimationFrame(()=>card.focus());
   }
-  function clearDeath(){deathScreen=null;playerDeath=null;deathBackground=null;$('death-screen').classList.add('hidden');keys.clear();pressed.clear();released.clear();}
+  function clearDeath(){deathScreen=null;playerDeath=null;deathBackground=null;$('death-screen').classList.add('hidden');controls.clear();}
   function drawDeath(){
     if(!deathScreen||deathScreen.drawn||!cast.ready||!GurovActing.ready)return;
     const theme=deathScreen.theme,art=DEATH_THEMES[deathScreen.art];
@@ -183,14 +183,14 @@
       playerDeath=new GurovPlayerDeath(fatal,world.level.platforms,matchMedia('(prefers-reduced-motion: reduce)').matches);
     }finally{world=checkpoint;}
     deathBackground=document.createElement('canvas');deathBackground.width=W;deathBackground.height=H;deathBackground.getContext('2d').drawImage(canvas,0,0);
-    mode='dying';story=null;accum=0;keys.clear();pressed.clear();released.clear();effects.length=0;toastTime=0;
+    mode='dying';story=null;accum=0;controls.clear();effects.length=0;toastTime=0;
     ['menu','modal','hud','low-health'].forEach(id=>$(id).classList.add('hidden'));$('toast').classList.remove('visible');sound.setState('pause');sound.stopSpeech();persist();
   }
   function showDeath(){
     playerDeath=null;deathBackground=null;
     if(deathScreen)return;
     mode='dead';story=null;modalClose=null;accum=0;shake=0;effects.length=0;
-    keys.clear();pressed.clear();released.clear();sound.setState('pause');
+    controls.clear();sound.setState('pause');
     const theme=world.deathCause==='fall'?'fall':world.deathSource||'damage';
     const phase=theme==='ivan'?world.deathBossPhase||'normal':null,key=theme==='ivan'&&phase==='academic'?'ivan-academic':theme,art=DEATH_THEMES[key];
     deathScreen={elapsed:0,ready:false,drawn:false,theme,phase,art:key,portrait:art.portrait||null};
@@ -218,14 +218,14 @@
   }
   $('death-checkpoint').onclick=()=>retryDeath();$('death-restart').onclick=()=>retryDeath(true);
   $('death-menu').onclick=()=>{if(deathScreen?.ready)mainMenu();};
-  function clearTransition(){transition=null;$('level-loading').classList.add('hidden');$('stage').removeAttribute('aria-busy');keys.clear();pressed.clear();released.clear();}
+  function clearTransition(){transition=null;$('level-loading').classList.add('hidden');$('stage').removeAttribute('aria-busy');controls.clear();}
   function transitionToLevel(index,saved){
     if(transition)return;
     sound.stopSpeech();
     // Prepare and save the destination once. Its simulation stays paused;
     // the existing canvas holds the outgoing scene until the card covers it.
     world=new World(index,saved);persist();mode='loading';modalClose=null;
-    keys.clear();pressed.clear();released.clear();accum=0;sound.setState('pause');
+    controls.clear();accum=0;sound.setState('pause');
     transition={index,elapsed:0,phase:'cover',reveal:0,error:false};
     $('modal').classList.add('hidden');$('hud').classList.add('hidden');
     $('loading-number').textContent=String(index+1).padStart(2,'0');
@@ -259,28 +259,28 @@
   function showPrologue(saved=null){
     sound.stopSpeech();resetVictory();clearBossOutro();clearDeath();
     world=new World(0,saved);prologue=new GurovPrologue();mode='prologue';story=null;modalClose=null;
-    keys.clear();pressed.clear();released.clear();accum=0;effects.length=0;
+    controls.clear();accum=0;effects.length=0;
     ['menu','hud','modal','credits'].forEach(id=>$(id).classList.add('hidden'));
     $('stage').classList.remove('summer-yard');sound.init();sound.setState('menu');
     $('prologue-skip').classList.remove('hidden');$('prologue-skip').focus();persist();
   }
   function finishPrologue(){
     if(!prologue)return;const saved=world.save();prologue=null;sound.stopSpeech();
-    $('prologue-skip').classList.add('hidden');keys.clear();pressed.clear();released.clear();
+    $('prologue-skip').classList.add('hidden');controls.clear();
     enterLevel(0,saved,true);
   }
   $('prologue-skip').onclick=finishPrologue;
   function startNew(){sound.init();const saved=readSave();if(saved){dialog('НОВОЕ ПРИКЛЮЧЕНИЕ','Начать с чистой доски?','<p>Текущее сохранение будет заменено. Вы снова начнёте с первой главы.</p>',[{text:'Начать заново',action:()=>showPrologue()},{text:'Назад',action:closeDialog}],closeDialog);}else showPrologue();}
-  function mainMenu(){persist();prologue=null;$('prologue-skip').classList.add('hidden');upgradeChoice=null;renderPrevious=null;epilogue=null;$('epilogue-skip').classList.add('hidden');clearBossOutro();clearDeath();mode='menu';$('stage').classList.remove('summer-yard');world=null;credits=null;actor.resetMenu();$('credits').classList.add('hidden');$('modal').classList.add('hidden');$('hud').classList.add('hidden');$('menu').classList.remove('hidden');sound.setState('menu');keys.clear();pressed.clear();released.clear();refreshContinue();$('start').focus();}
+  function mainMenu(){persist();prologue=null;$('prologue-skip').classList.add('hidden');upgradeChoice=null;renderPrevious=null;epilogue=null;$('epilogue-skip').classList.add('hidden');clearBossOutro();clearDeath();mode='menu';$('stage').classList.remove('summer-yard');world=null;credits=null;actor.resetMenu();$('credits').classList.add('hidden');$('modal').classList.add('hidden');$('hud').classList.add('hidden');$('menu').classList.remove('hidden');sound.setState('menu');controls.clear();refreshContinue();$('start').focus();}
   function showEpilogue(){
     sound.stopSpeech();
-    persist();story=null;modalClose=null;mode='epilogue';keys.clear();pressed.clear();released.clear();
+    persist();story=null;modalClose=null;mode='epilogue';controls.clear();
     ['menu','hud','modal'].forEach(id=>$(id).classList.add('hidden'));epilogue=new GurovEpilogue();sound.init();sound.setState('menu');$('epilogue-skip').classList.remove('hidden');$('epilogue-skip').focus();
   }
   $('epilogue-skip').onclick=showCredits;
   function refreshCreditsControl(){$('credits-pause').textContent=credits.done?'Ещё разок ↺':credits.paused?'Продолжить титры ▷':'Офтановить титры Ⅱ';}
   function showCredits(){
-    epilogue=null;$('epilogue-skip').classList.add('hidden');sound.stopSpeech();persist();world=null;story=null;modalClose=null;mode='credits';keys.clear();pressed.clear();released.clear();actor.resetMenu();
+    epilogue=null;$('epilogue-skip').classList.add('hidden');sound.stopSpeech();persist();world=null;story=null;modalClose=null;mode='credits';controls.clear();actor.resetMenu();
     credits={elapsed:0,offset:0,paused:matchMedia('(prefers-reduced-motion: reduce)').matches,done:false};
     ['menu','hud','modal'].forEach(id=>$(id).classList.add('hidden'));$('credits').classList.remove('hidden');$('credits-roll').scrollTop=0;
     sound.init();sound.setState('menu');refreshCreditsControl();$('credits-pause').focus();
@@ -324,7 +324,7 @@
   const handled=['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyS','KeyA','KeyD','KeyW','KeyJ','KeyX','KeyK','KeyH','ShiftLeft','ShiftRight','KeyE','Enter','Escape','KeyP','KeyM'];
   addEventListener('keydown',e=>{
     // System shortcuts belong to the host window, including on the death menu.
-    if(e.metaKey||e.ctrlKey||e.altKey){keys.clear();pressed.clear();released.clear();return;}
+    if(e.metaKey||e.ctrlKey||e.altKey){controls.clear();return;}
     if(prologue){
       if(handled.includes(e.code)||e.code==='Tab')e.preventDefault();if(e.repeat)return;
       if(e.code==='KeyM')toggleSound();else if(e.code==='Tab')$('prologue-skip').focus();
@@ -384,17 +384,20 @@
       return;
     }
     if(handled.includes(e.code))e.preventDefault();if(e.repeat)return;
-    if(e.code!=='KeyM')sound.init();keys.add(e.code);pressed.add(e.code);
+    if(e.code!=='KeyM')sound.init();controls.press('keyboard:'+e.code,e.code);
     if(e.code==='Escape'||e.code==='KeyP'){if(mode==='play')pause();else if(mode==='modal'&&modalClose)modalClose();}
     if(e.code==='KeyM')toggleSound();
-    if(e.code==='KeyE'&&mode==='play'&&!world.nearCatch&&world.nearNpc){const repeat=world.nearNpc.helped;world.talkToCameo();events();showStory(repeat?'sasha-repeat':'sasha-coursework');}
-    else if(e.code==='KeyE'&&mode==='play'&&world.nearFaculty){if(world.talkToFaculty()){events();showStory(world.pendingScene);}}
-    else if(e.code==='KeyE'&&mode==='play'&&!world.nearCatch&&world.nearSign){const s=world.nearSign;dialog(s.heading,'Заметка на полях',`<p>${s.text}</p>`,[{text:'Продолжить →',action:closeDialog}],closeDialog);}
+    gameplayAction(e.code);
   });
-  addEventListener('keyup',e=>{keys.delete(e.code);released.add(e.code);});
+  function gameplayAction(code){
+    if(code==='KeyE'&&mode==='play'&&!world.nearCatch&&world.nearNpc){const repeat=world.nearNpc.helped;world.talkToCameo();events();showStory(repeat?'sasha-repeat':'sasha-coursework');}
+    else if(code==='KeyE'&&mode==='play'&&world.nearFaculty){if(world.talkToFaculty()){events();showStory(world.pendingScene);}}
+    else if(code==='KeyE'&&mode==='play'&&!world.nearCatch&&world.nearSign){const s=world.nearSign;dialog(s.heading,'Заметка на полях',`<p>${s.text}</p>`,[{text:'Продолжить →',action:closeDialog}],closeDialog);}
+  }
+  addEventListener('keyup',e=>controls.release('keyboard:'+e.code));
   addEventListener('pointerdown',e=>{if(sound.enabled&&!e.target.closest?.('#menu-sound'))sound.init();});
   function suspendWindow(){
-    keys.clear();pressed.clear();released.clear();
+    controls.clear();
     if(backgroundPaused)return;
     backgroundPaused=true;persist();sound.suspend();
   }
@@ -402,7 +405,7 @@
     if(document.hidden)return;
     // Discard time spent away even when the browser stopped requesting frames.
     if(backgroundPaused)last=null;
-    backgroundPaused=false;sound.resume();
+    backgroundPaused=false;if(!mobile?.rotationPaused)sound.resume();
   }
   addEventListener('blur',suspendWindow);
   addEventListener('focus',resumeWindow);
@@ -843,11 +846,14 @@
     // Drifting dust in the foreground provides motion without obscuring jumps.
     for(let i=0;i<22;i++){const x=(random(i)*W-world.camera*.2+clock*(i%2?4:-3)+W*10)%W,y=165+random(i+10)*430+Math.sin(clock*.6+i)*12;rect(x,y,2,2,'#d6dab638');}
   }
+  function assetsReady(){return assetReady&&actor.ready&&cast.ready&&GurovEnvironments.ready&&GurovActing.ready&&GurovPrologueArt.ready;}
+  mobile=new GurovMobile({input:controls,press:(code,source)=>{sound.init();if(mode==='play'&&!transition&&controls.press(source,code))gameplayAction(code);},release:source=>controls.release(source),freeze:paused=>{controls.clear();if(paused||backgroundPaused)sound.suspend();else{last=null;sound.resume();}},resize:fit});
   function loop(t){
     const dt=last===null?0:Math.min((t-last)/1000||0,.05);last=t;
     // Do not change scene mode: speech coordinators would release their current
     // speaker on a modal pause. Keep captions and every scene clock frozen too.
-    if(backgroundPaused){requestAnimationFrame(loop);return;}
+    mobile.update({mode,world,transition,ready:assetsReady(),prologue,epilogue});
+    if(backgroundPaused||mobile.rotationPaused){requestAnimationFrame(loop);return;}
     clock+=dt;shake=Math.max(0,shake-dt);sound.update();
     if(mode==='play'&&world){accum+=dt;let first=true;while(accum+1e-9>=1/120){const i=input();if(!first){i.jump=false;i.dash=false;i.jumpReleased=false;i.heal=false;}renderPrevious=GurovRender.capture(world);world.update(1/120,i);events();accum-=1/120;first=false;if(mode!=='play'){accum=0;break;}}if(!first){pressed.clear();released.clear();}for(const e of effects){e.life-=dt;e.x+=e.vx*dt;e.y+=e.vy*dt;e.vy+=150*dt;}for(let i=effects.length-1;i>=0;i--)if(effects[i].life<=0)effects.splice(i,1);updateHud();}
     else {accum=0;pressed.clear();released.clear();}
@@ -872,7 +878,7 @@
   }
   requestAnimationFrame(loop);
   // Native shells permit autoplay; browsers can unlock the same context on a gesture.
-  if(!document.hidden)sound.init();else{sound.suspend();refreshSoundButton();}
+  if(!document.hidden&&!mobile.rotationPaused)sound.init();else{sound.suspend();refreshSoundButton();}
   // Small read-only diagnostics for automated smoke tests and bug reports.
-  window.gurov={get state(){return {mode,backgroundPaused,prologue:prologue?.status||null,ambientSpeech:ambientSpeech.status,encounterSpeech:encounterSpeech.status,departmentSpeech:departmentSpeech.status,playerDeath:playerDeath?{elapsed:playerDeath.elapsed,duration:playerDeath.duration,pose:playerDeath.pose,landed:playerDeath.landed,cause:playerDeath.cause}:null,upgradeChoice:!!upgradeChoice,upgrade:world?.upgrade,playerMood:actor.playerMood,paperCooldown:world?.paperCooldown,epilogue:epilogue?epilogue.status:null,actingReady:GurovActing.ready,bossOutro:bossOutro?{kind:bossOutro.kind,elapsed:bossOutro.elapsed,duration:bossOutro.duration,phase:bossOutro.phase,cues:[...bossOutro.cues],canSkip:bossOutro.canSkip,reduced:bossOutro.reduced,paused:bossOutro.paused}:null,pendingBossOutro:world?.pendingBossOutro,campaignCleared,menuIvan:{...menuIvan},menuProfessorSource:actor.menuState==='idle'?'gurov-actions-v3':'gurov-animation-v2',deathScreen:deathScreen?{...deathScreen}:null,awaitingRespawn:!!world?.awaitingRespawn,deathCause:world?.deathCause,deathSource:world?.deathSource,checkpoint:world?.checkpoint,transition:transition?{...transition}:null,credits:credits?{...credits}:null,story:story?{kind:story.kind,index:story.index,elapsed:clock-story.started,portraitReady:story.portraitReady,expression:GurovStory[story.kind][story.index].expression||'normal'}:null,pendingScene:world?.pendingScene,illustrations:{portraits:Object.fromEntries(Object.entries(GurovIllustrations.portraits).map(([id,im])=>[id,{width:im.naturalWidth,height:im.naturalHeight}])),facultyReady:GurovIllustrations.ready,facultyCount:Object.keys(GurovIllustrations.faculty).length},faculty:world?.level.faculty?.map(n=>({...n,performance:GurovFacultyMotion.sample(n,world.time)})),endless:!!world?.level.endless,distance:world?world.distanceOffset+world.player.x:0,platformCount:world?.level.platforms.length,itemCount:world?.level.items.length,captive:world?.level.captive?{...world.level.captive}:null,assetReady:assetReady&&actor.ready&&cast.ready&&GurovEnvironments.ready&&GurovActing.ready&&GurovPrologueArt.ready,environment:{summerReady:GurovEnvironments.ready,failed:GurovEnvironments.failed,cachedSections:GurovEnvironments.cache.size,officeVariants:[...sceneCache.keys()].filter(k=>k.startsWith('faculty-desk-')).length},castReady:cast.ready,coursework:!!world?.courseworkObtained,nearCatch:!!world?.nearCatch,nearFaculty:world?.nearFaculty?.id||null,runner:world?.runner?{...world.runner}:null,enemies:world?.level.enemies.map(e=>({...e})),intro:world?.intro?{...world.intro}:null,companion:world?.companion?{...world.companion}:null,boss:world?.level.boss?structuredClone(world.level.boss):null,cameo:world?.level.npc?{...world.level.npc}:null,animationReady:actor.ready,menuAnimation:actor.menuState,menuTime:actor.menuTime,runFrame:actor.runFrame,enemyProjectiles:world?.projectiles.filter(s=>s.enemy).map(s=>({...s})),projectiles:world?.projectiles.filter(s=>!s.enemy).map(s=>({type:s.type,homing:s.homing,seeking:s.seeking,x:s.x,y:s.y,vx:s.vx,vy:s.vy,age:s.age,bounces:s.bounces})),level:world?.index,player:world?{...world.player}:null,pages:world?.pages,stats:world?{...world.stats}:null,canvas:{width:W,height:H},audio:sound.status,sound:sound.enabled};}};
+  window.gurov={get state(){return {mode,backgroundPaused,mobile:mobile?.status,prologue:prologue?.status||null,ambientSpeech:ambientSpeech.status,encounterSpeech:encounterSpeech.status,departmentSpeech:departmentSpeech.status,playerDeath:playerDeath?{elapsed:playerDeath.elapsed,duration:playerDeath.duration,pose:playerDeath.pose,landed:playerDeath.landed,cause:playerDeath.cause}:null,upgradeChoice:!!upgradeChoice,upgrade:world?.upgrade,playerMood:actor.playerMood,paperCooldown:world?.paperCooldown,epilogue:epilogue?epilogue.status:null,actingReady:GurovActing.ready,bossOutro:bossOutro?{kind:bossOutro.kind,elapsed:bossOutro.elapsed,duration:bossOutro.duration,phase:bossOutro.phase,cues:[...bossOutro.cues],canSkip:bossOutro.canSkip,reduced:bossOutro.reduced,paused:bossOutro.paused}:null,pendingBossOutro:world?.pendingBossOutro,campaignCleared,menuIvan:{...menuIvan},menuProfessorSource:actor.menuState==='idle'?'gurov-actions-v3':'gurov-animation-v2',deathScreen:deathScreen?{...deathScreen}:null,awaitingRespawn:!!world?.awaitingRespawn,deathCause:world?.deathCause,deathSource:world?.deathSource,checkpoint:world?.checkpoint,transition:transition?{...transition}:null,credits:credits?{...credits}:null,story:story?{kind:story.kind,index:story.index,elapsed:clock-story.started,portraitReady:story.portraitReady,expression:GurovStory[story.kind][story.index].expression||'normal'}:null,pendingScene:world?.pendingScene,illustrations:{portraits:Object.fromEntries(Object.entries(GurovIllustrations.portraits).map(([id,im])=>[id,{width:im.naturalWidth,height:im.naturalHeight}])),facultyReady:GurovIllustrations.ready,facultyCount:Object.keys(GurovIllustrations.faculty).length},faculty:world?.level.faculty?.map(n=>({...n,performance:GurovFacultyMotion.sample(n,world.time)})),endless:!!world?.level.endless,distance:world?world.distanceOffset+world.player.x:0,platformCount:world?.level.platforms.length,itemCount:world?.level.items.length,captive:world?.level.captive?{...world.level.captive}:null,assetReady:assetsReady(),environment:{summerReady:GurovEnvironments.ready,failed:GurovEnvironments.failed,cachedSections:GurovEnvironments.cache.size,officeVariants:[...sceneCache.keys()].filter(k=>k.startsWith('faculty-desk-')).length},castReady:cast.ready,coursework:!!world?.courseworkObtained,nearCatch:!!world?.nearCatch,nearFaculty:world?.nearFaculty?.id||null,runner:world?.runner?{...world.runner}:null,enemies:world?.level.enemies.map(e=>({...e})),intro:world?.intro?{...world.intro}:null,companion:world?.companion?{...world.companion}:null,boss:world?.level.boss?structuredClone(world.level.boss):null,cameo:world?.level.npc?{...world.level.npc}:null,animationReady:actor.ready,menuAnimation:actor.menuState,menuTime:actor.menuTime,runFrame:actor.runFrame,enemyProjectiles:world?.projectiles.filter(s=>s.enemy).map(s=>({...s})),projectiles:world?.projectiles.filter(s=>!s.enemy).map(s=>({type:s.type,homing:s.homing,seeking:s.seeking,x:s.x,y:s.y,vx:s.vx,vy:s.vy,age:s.age,bounces:s.bounces})),level:world?.index,player:world?{...world.player}:null,pages:world?.pages,stats:world?{...world.stats}:null,canvas:{width:W,height:H},audio:sound.status,sound:sound.enabled};}};
 })();

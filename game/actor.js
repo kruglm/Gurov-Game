@@ -22,6 +22,7 @@
   class GurovActor {
     constructor(){
       this.ready=false;this.frames=[];this.menuTime=0;this.menuState='idle';this.lastCue='';this.runFrame=0;this.menuCycles=0;
+      if(root.GUROV_PREPARED_DATA?.actor){root.GurovPrepared.load(root.GUROV_PREPARED_DATA.actor).then(actor=>{Object.assign(this,actor);this.ready=true;}).catch(e=>console.error(e));return;}
       const img=new Image();img.onload=()=>this.prepare(img);img.onerror=()=>console.error('Animation atlas failed to load');
       img.src=root.GUROV_ANIMATION_DATA||'assets/gurov-animation-v2.png';
     }

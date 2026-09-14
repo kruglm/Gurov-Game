@@ -3,6 +3,12 @@
   class Cast {
     constructor(){
       this.actors={};this.captive=null;this.ready=false;
+      const prepared=root.GUROV_PREPARED_DATA?.cast;
+      if(prepared){
+        for(const [name,spec] of Object.entries(prepared.actors))root.GurovPrepared.load(spec).then(actor=>{this.actors[name]=actor;this.checkReady();}).catch(e=>console.error(e));
+        for(const key of ['captive','crouch'])root.GurovPrepared.load(prepared[key]).then(actor=>{this[key]=actor;this.checkReady();}).catch(e=>console.error(e));
+        return;
+      }
       for(const name of ['gurov','gurov-tired','gurov-happy','erik','ivan','sasha','roman','ravil','ivan-academic']){
         const image=new Image();image.onload=()=>{this.actors[name]=this.prepare(image,4,name);this.checkReady();};
         image.onerror=()=>console.error('Cannot load character: '+name);

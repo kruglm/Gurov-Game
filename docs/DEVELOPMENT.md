@@ -79,3 +79,17 @@ GitHub Actions в `.github/workflows/ci.yml` проверяет проект н�
 Готовые ZIP размещайте в GitHub Releases. В исходниках большие data URI изображений не хранятся; PNG остаются единственным редактируемым источником. GitHub ограничивает отдельные файлы обычного репозитория 100 MiB и рекомендует выпускать дистрибутивы через Releases: [официальное руководство](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
 
 Перед публикацией выполните `python3 tools/check_repository.py` и посмотрите `git status --short`. Условия использования ресурсов перечислены в [ASSETS.md](ASSETS.md).
+
+## Мобильная версия сайта
+
+```sh
+npm run build:web
+node tests/mobile.cjs .build/web-2.9.0
+npx playwright install webkit
+GUROV_MOBILE_ENGINE=webkit node tests/mobile.cjs .build/web-2.9.0
+node tests/web-assets.cjs .build/web-2.9.0
+```
+
+Подставляйте версию из `project.json`. `build:web` готовит PNG и атласы заранее в Chromium, создаёт `.build/web-<version>/` и проверенный архив `dist/itch/Gurov-<version>-HTML5.zip`. Это отдельный дистрибутив для HTTP: его нужно загружать на itch.io с флагами HTML5 и Mobile Friendly. Офлайн-архив по-прежнему собирается через `package_game.py`.
+
+Сенсорный тест использует настоящие события касаний Chromium, проверяет одновременное движение/прыжок/выстрел/рывок, отмену касаний, паузу, поворот, лечение, диалоги и четыре размера экрана. В WebKit проверяются касания, интерфейс и остановка/продолжение звука при повороте. Это эмуляция браузера: для оценки FPS, нагрева и работы с системными панелями нужны физические Android/iPhone. `web-assets.cjs` сравнивает подготовленные кадры и их якоря с исходным загрузчиком.

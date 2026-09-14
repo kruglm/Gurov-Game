@@ -27,3 +27,24 @@ jobs:
           path: tests/.output/
           include-hidden-files: true
           retention-days: 7
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:web
+      - run: node tests/web-assets.cjs
+      - run: node tests/mobile.cjs ".build/web-$(node -p "require('./project.json').version")"
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: mobile-test-output
+          path: tests/.output/
+          include-hidden-files: true
+          retention-days: 7
