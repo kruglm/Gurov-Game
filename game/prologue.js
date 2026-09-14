@@ -21,9 +21,26 @@
   const im=new Image();im.onload=()=>{if(key==='hall'){art.hall=document.createElement('canvas');art.hall.width=1280;art.hall.height=720;art.hall.getContext('2d').drawImage(im,0,0,1280,720);}else if(key.startsWith('run-'))crowd.prepareSheet(im,crowd.names.indexOf(key.slice(4)));else art.frames[key]=split(im,key==='crowd'?4:3,key==='crowd'?3:2,key);art.ready=++loaded===7;};
   im.onerror=()=>{art.failed=true;console.error('Opening artwork unavailable: '+key);};im.src=root.GUROV_PROLOGUE_DATA?.[key]||'assets/prologue/'+key+(key.startsWith('run-')?'-v2':'')+'.png';
  }
- function sprite(c,key,i,x,feet,height,reference=i,facing=1,angle=0){
+ function tomatoStain(c){
+  // Crushed pulp, skin, seeds and short drips, in the painted actor's coordinates.
+  const pulp=c.createLinearGradient(-10,-18,12,35);pulp.addColorStop(0,'#ee6540');pulp.addColorStop(.45,'#d63e25');pulp.addColorStop(1,'#a6291f');
+  c.fillStyle=pulp;c.strokeStyle='#792a22';c.lineWidth=1.8;c.lineJoin='round';
+  c.beginPath();c.moveTo(-19,-7);c.bezierCurveTo(-28,-19,-14,-16,-10,-15);c.bezierCurveTo(-5,-25,2,-16,7,-17);
+  c.bezierCurveTo(17,-25,17,-11,23,-10);c.bezierCurveTo(31,-6,18,1,21,7);c.bezierCurveTo(26,16,13,13,13,22);
+  c.bezierCurveTo(14,42,7,38,8,22);c.bezierCurveTo(1,28,1,14,-4,20);c.bezierCurveTo(-7,36,-13,29,-10,17);
+  c.bezierCurveTo(-16,12,-28,20,-23,10);c.bezierCurveTo(-15,5,-27,2,-19,-7);c.closePath();c.fill();c.stroke();
+  c.fillStyle='#f57a4a';c.beginPath();c.ellipse(-5,-7,10,5,-.45,0,Math.PI*2);c.fill();
+  c.fillStyle='#57753b';c.strokeStyle='#2e452c';c.lineWidth=1.6;c.beginPath();c.moveTo(4,-12);c.lineTo(-6,-22);c.lineTo(5,-18);c.lineTo(9,-29);c.lineTo(12,-18);c.lineTo(23,-21);c.lineTo(17,-12);c.lineTo(8,-16);c.closePath();c.fill();c.stroke();
+  for(const [x,y,r]of[[-27,-1,2.2],[27,17,2.6],[-17,31,2],[15,42,1.8]]){c.fillStyle='#c83b27';c.beginPath();c.ellipse(x,y,r,r*1.4,-.2,0,Math.PI*2);c.fill();}
+  c.fillStyle='#f7bc71';for(const [x,y,a]of[[-9,-3,.6],[5,7,-.4],[-3,15,.4]]){c.beginPath();c.ellipse(x,y,1.5,2.8,a,0,Math.PI*2);c.fill();}
+ }
+ function sprite(c,key,i,x,feet,height,reference=i,facing=1,angle=0,stained=false){
   const f=art.frames[key]?.[i],ref=art.frames[key]?.[reference];if(!f||!ref)return;
-  const s=height/ref.h;c.save();c.translate(x,feet);c.scale(facing,1);c.rotate(angle);c.imageSmoothingEnabled=true;c.drawImage(f.canvas,f.l,f.t,f.w,f.h,-f.w*s/2,-f.h*s,f.w*s,f.h*s);c.restore();
+  const s=height/ref.h;c.save();c.translate(x,feet);c.scale(facing,1);c.rotate(angle);c.imageSmoothingEnabled=true;c.drawImage(f.canvas,f.l,f.t,f.w,f.h,-f.w*s/2,-f.h*s,f.w*s,f.h*s);
+  // The startled frame already contains the painted tomato. Other poses keep
+  // its mark on the lapel, sharing the sprite's bob, tilt and pose transition.
+  if(stained&&key==='principals'&&i<2){const [ax,ay]=i===0?[340,218]:[308,224];c.translate((ax-f.l-f.w/2)*s,(ay-f.t-f.h)*s);c.scale(s,s);tomatoStain(c);}
+  c.restore();
  }
  function student(c,id,x,feet,height,time,running=true,facing=1,phase=0,lean=0){
   if(running){crowd.run(c,id,x,feet,height,time*2*Math.PI+phase,facing,lean);return;}
@@ -84,8 +101,7 @@
     if(this.pose!==pose){this.previousPose=this.pose??pose;this.pose=pose;this.poseAt=this.elapsed;}
     const mix=smooth((this.elapsed-this.poseAt)/.16),angle=hit&&i===2?-.025:Math.sin(t*2)*.008;
     // One opaque pose at a time: dissolving drawings produces double faces.
-    sprite(c,'principals',mix<.4?this.previousPose:pose,gx,gy+bob,208,0,1,angle+(this.reduced?0:Math.sin(mix*Math.PI)*.024));
-    if(hit&&pose!==2){c.fillStyle='#bb4430';c.beginPath();c.ellipse(gx+7,gy-113,7,9,-.3,0,Math.PI*2);c.fill();}
+    sprite(c,'principals',mix<.4?this.previousPose:pose,gx,gy+bob,208,0,1,angle+(this.reduced?0:Math.sin(mix*Math.PI)*.024),hit);
    }
    // One person per painted chair. Row foregrounds occlude seated bodies
    // and runners until they reach the side aisle; feet never cross a desk.
