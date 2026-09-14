@@ -18,6 +18,9 @@ const output='tests/.output/mobile'+(safari?'-webkit':'');fs.mkdirSync(output,{r
  try{
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,offline:!server&&!remote});
   page=await context.newPage();const errors=[],warnings=[];
+  // A cold public CDN download can exceed Playwright's 30 s navigation default.
+  // Local checks keep the shorter bound; gameplay assertions are unchanged.
+  if(remote)page.setDefaultNavigationTimeout(120000);
   page.on('pageerror',e=>errors.push(String(e)));page.on('console',e=>{if(e.type()==='error')warnings.push(e.text());});
   await page.addInitScript(require('./campaign-clock.cjs'));
   await page.addInitScript(()=>{

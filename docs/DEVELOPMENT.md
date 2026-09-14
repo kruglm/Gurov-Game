@@ -68,6 +68,8 @@ python3 tests/verify_releases.py
 
 Готовые игровые банки являются частью исходников: обычная сборка не требует TTS, GPU, голосовых записей или доступа к внешнему сервису. При замене озвучки обновляйте банк персонажа и `voices/manifest.js` вместе; `npm run check` проверяет соответствие точным текстам.
 
+`tools/recast_voices.py` выполняет выборочную локальную генерацию по согласованным образцам. Стадии `inventory`, `render` и `bundle` разделены: упаковка требует контрольных сумм проверенных клипов в локальном `qa-approved.json`, проверяет полный банк выбранного персонажа и сохраняет остальные голоса. Параметры и источники перечислены в [VOICE-CAST.md](VOICE-CAST.md). Генератор не нужен для обычной сборки.
+
 `tools/compose_score.py` — исходник музыкальной композиции. Для необязательной повторной генерации установите зависимости из `tools/requirements-music.txt` в отдельное виртуальное окружение и запустите скрипт. Он заменяет шесть музыкальных банков в `game/assets/music/`; WAV и метрики складывает в `.build/music/`. Для простой сборки запускать его не нужно.
 
 ## Подготовка к GitHub
@@ -84,10 +86,10 @@ GitHub Actions в `.github/workflows/ci.yml` проверяет проект н�
 
 ```sh
 npm run build:web
-node tests/mobile.cjs .build/web-2.9.0
+node tests/mobile.cjs .build/web-2.10.0
 npx playwright install webkit
-GUROV_MOBILE_ENGINE=webkit node tests/mobile.cjs .build/web-2.9.0
-node tests/web-assets.cjs .build/web-2.9.0
+GUROV_MOBILE_ENGINE=webkit node tests/mobile.cjs .build/web-2.10.0
+node tests/web-assets.cjs .build/web-2.10.0
 ```
 
 Подставляйте версию из `project.json`. `build:web` готовит PNG и атласы заранее в Chromium, создаёт `.build/web-<version>/` и проверенный архив `dist/itch/Gurov-<version>-HTML5.zip`. Это отдельный дистрибутив для HTTP: его нужно загружать на itch.io с флагами HTML5 и Mobile Friendly. Офлайн-архив по-прежнему собирается через `package_game.py`.

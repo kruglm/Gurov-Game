@@ -50,6 +50,7 @@ async function main(){
  fs.writeFileSync(path.join(target,'assets/prepared-data.js'),'window.GUROV_WEB_BUILD='+JSON.stringify(project.version)+';window.GUROV_PREPARED_DATA='+JSON.stringify(prepared)+';\n');
  let html=fs.readFileSync(path.join(target,'index.html'),'utf8');html=html.replace('<script src="assets/sprites-data.js">','<script src="assets/prepared-data.js"></script><script src="assets/sprites-data.js">');fs.writeFileSync(path.join(target,'index.html'),html);
  fs.copyFileSync('docs/ASSETS.md',path.join(target,'SOURCES.txt'));fs.copyFileSync('docs/PLAYING.md',path.join(target,'READ-ME.txt'));
+ fs.copyFileSync('docs/VOICE-CAST.md',path.join(target,'VOICE-CAST.md'));
  fs.writeFileSync(path.join(target,'build-info.json'),JSON.stringify({version:project.version,build:project.build,mobile:true,preparedFrames:true,externalArt:true},null,2)+'\n');
  execFileSync('python3',['tools/package_web.py',target],{stdio:'inherit'});
  console.log('Web folder:',target);

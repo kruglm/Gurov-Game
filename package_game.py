@@ -29,6 +29,7 @@ def add_docs(folder, instructions):
     playing = (ROOT / 'docs/PLAYING.md').read_text(encoding='utf-8')
     (folder / 'READ-ME.txt').write_text(instructions + '\n\n' + playing, encoding='utf-8')
     shutil.copy2(ROOT / 'docs/ASSETS.md', folder / 'SOURCES.txt')
+    shutil.copy2(ROOT / 'docs/VOICE-CAST.md', folder / 'VOICE-CAST.md')
 
 
 def zip_folder(folder):

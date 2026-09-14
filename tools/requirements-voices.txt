@@ -1,0 +1,6 @@
+# Optional authoring environment: Python 3.12, Apple Silicon.
+# Normal builds and gameplay do not require these packages or model weights.
+mlx==0.32.2
+mlx-audio==0.5.3
+numpy==2.3.5
+soundfile==0.14.0
